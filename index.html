@@ -350,7 +350,6 @@
                             </button>
                         </header>
 
-                        {/* СЕКЦИЯ ФИЛЬТРОВ С ИЗМЕНЕННЫМИ СКРУГЛЕНИЯМИ */}
                         <div className="mb-3 flex gap-2">
                             <button 
                                 onClick={() => setFilter('ALL')}
@@ -470,7 +469,7 @@
                                             style={{animationDelay: `${idx * 0.05}s`}}
                                         >
                                             <div className="p-5 flex items-center justify-between">
-                                                <div className="space-y-1 overflow-hidden">
+                                                <div className="space-y-1 overflow-hidden pr-2">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && (
@@ -483,6 +482,19 @@
                                                     <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white truncate'}`}>
                                                         {event.name}
                                                     </h2>
+                                                </div>
+                                                
+                                                {/* ИНДИКАТОР СОСТОЯНИЯ (V / X) */}
+                                                <div className="shrink-0 ml-2">
+                                                    {isExpanded ? (
+                                                        <div className="w-10 h-10 flex items-center justify-center transition-all">
+                                                            {renderIcon('X', 32, "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]")}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-10 h-10 flex items-center justify-center transition-all">
+                                                            {renderIcon('ChevronDown', 32, "text-[#FFEED2] opacity-80")}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
