@@ -57,6 +57,18 @@
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
+        /* Анимация пульсирующей красной рамки */
+        @keyframes pulse-red-border {
+            0% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+            50% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+            100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .urgent-vacancy {
+            animation: pulse-red-border 2s infinite ease-in-out;
+            border-width: 2px !important;
+        }
+
         .role-icon-img {
             width: 100%;
             height: 100%;
@@ -274,8 +286,12 @@
                                     const isExpanded = expandedEventId === eventId;
                                     const missing = getMissingStaff(event);
                                     const allStaff = [...(event.staff || []), ...missing];
+                                    
+                                    // Проверка наличия вакансий официанта или бармена
+                                    const hasUrgentVacancies = missing.some(m => 
+                                        m.roleKey === 'оф' || m.roleKey === 'бар'
+                                    );
 
-                                    // Logic for time display: "Start - End" or just "Start"
                                     const timeDisplay = event.start ? (
                                         event.end ? `${event.start} – ${event.end}` : event.start
                                     ) : null;
@@ -284,7 +300,7 @@
                                         <div 
                                             key={eventId} 
                                             onClick={() => toggleExpand(eventId)}
-                                            className="bg-brand-card rounded-[24px] border border-white/10 overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all" 
+                                            className={`bg-brand-card rounded-[24px] border border-white/10 overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy' : ''}`} 
                                             style={{animationDelay: `${idx * 0.1}s`}}
                                         >
                                             <div className="p-5 flex items-center justify-between">
@@ -315,7 +331,7 @@
                                                     </div>
 
                                                     <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                        <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Состав команды</div>
+                                                        <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Состав команды {hasUrgentVacancies && <span className="text-red-400 ml-2 animate-pulse">• ЕСТЬ ВАКАНСИИ</span>}</div>
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
                                                             
@@ -342,8 +358,8 @@
                                                                             <span className="text-[13px] font-mono font-bold text-white">{person.time || '--:--'}</span>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="p-1.5 text-white/20 animate-pulse">
-                                                                            {renderIcon('UserPlus', 18, "text-white/40")}
+                                                                        <div className={`p-1.5 ${person.roleKey === 'оф' || person.roleKey === 'бар' ? 'text-red-500 animate-bounce' : 'text-white/20 animate-pulse'}`}>
+                                                                            {renderIcon('UserPlus', 18, "currentColor")}
                                                                         </div>
                                                                     )}
                                                                 </div>
