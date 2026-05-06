@@ -103,6 +103,21 @@
             overflow-y: auto;
             box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7);
         }
+
+        /* Дополнительный стиль для автодополнения внутри формы */
+        .apply-autocomplete {
+            position: absolute;
+            z-index: 60;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1411;
+            border: 1px solid #FFEED2;
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -111,12 +126,12 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-        // Конфигурация Телеграм
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
         const App = () => {
             const [events, setEvents] = useState([]);
+            const [staffDatabase, setStaffDatabase] = useState([]); // База всех сотрудников
             const [loading, setLoading] = useState(false);
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
@@ -128,19 +143,20 @@
             const [showAutocomplete, setShowAutocomplete] = useState(false);
             const autocompleteRef = useRef(null);
 
-            // Состояния для формы заявки
-            const [applyingFor, setApplyingFor] = useState(null); // id мероприятия
+            const [applyingFor, setApplyingFor] = useState(null);
             const [applyName, setApplyName] = useState('');
             const [applyPhone, setApplyPhone] = useState('');
+            const [showApplyAutocomplete, setShowApplyAutocomplete] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
-            const [submitStatus, setSubmitStatus] = useState(null); // 'success' | 'error'
+            const [submitStatus, setSubmitStatus] = useState(null);
 
             const Icons = useMemo(() => {
                 const lucide = window.LucideReact || window.lucideReact || {};
                 return lucide.icons || lucide;
             }, []);
 
-            const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+            const EVENTS_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+            const STAFF_DB_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
             const REFRESH_INTERVAL = 10 * 60 * 1000;
 
             const renderIcon = (iconName, size = 18, className = "text-white") => {
@@ -151,8 +167,10 @@
 
             const toggleExpand = (id) => {
                 if (expandedEventId !== id) {
-                    setApplyingFor(null); // Сбрасываем форму при смене карточки
+                    setApplyingFor(null);
                     setSubmitStatus(null);
+                    setApplyName('');
+                    setApplyPhone('');
                 }
                 setExpandedEventId(prev => prev === id ? null : id);
             };
@@ -245,15 +263,27 @@
                 else setError(null);
             }, []);
 
-            const fetchEvents = async (silent = false) => {
-                if (!silent) setLoading(true);
+            const fetchInitialData = async () => {
+                setLoading(true);
                 try {
-                    const response = await fetch(`${DATA_URL}?t=${Date.now()}`);
-                    if (!response.ok) throw new Error("Ошибка при получении данных");
-                    const data = await response.json();
-                    processAndSetEvents(data);
+                    // Загружаем мероприятия и базу сотрудников параллельно
+                    const [eventsRes, staffRes] = await Promise.all([
+                        fetch(`${EVENTS_URL}?t=${Date.now()}`),
+                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
+                    ]);
+                    
+                    if (eventsRes.ok) {
+                        const eventsData = await eventsRes.json();
+                        processAndSetEvents(eventsData);
+                    }
+                    
+                    if (staffRes.ok) {
+                        const staffData = await staffRes.json();
+                        // Предполагаем, что staffData это массив объектов с полем 'name'
+                        setStaffDatabase(Array.isArray(staffData) ? staffData : []);
+                    }
                 } catch (err) {
-                    if (!silent) setError("Не удалось загрузить список мероприятий.");
+                    setError("Не удалось загрузить данные.");
                 } finally {
                     setLoading(false);
                     setIsInitialLoad(false);
@@ -261,8 +291,9 @@
             };
 
             useEffect(() => {
-                fetchEvents();
-                const intervalId = setInterval(() => fetchEvents(true), REFRESH_INTERVAL);
+                fetchInitialData();
+                const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
+                
                 const handleClickOutside = (event) => {
                     if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
                         setShowAutocomplete(false);
@@ -275,7 +306,8 @@
                 };
             }, [REFRESH_INTERVAL]);
 
-            const allStaffNames = useMemo(() => {
+            // Список имен из текущих мероприятий для фильтра поиска
+            const currentStaffNames = useMemo(() => {
                 const names = new Set();
                 events.forEach(event => {
                     if (event.staff) event.staff.forEach(person => { if (person.name) names.add(person.name); });
@@ -286,8 +318,18 @@
             const filteredAutocompleteNames = useMemo(() => {
                 if (!staffSearch || staffSearch.length < 1) return [];
                 const searchLower = staffSearch.toLowerCase();
-                return allStaffNames.filter(name => name.toLowerCase().includes(searchLower)).slice(0, 10);
-            }, [allStaffNames, staffSearch]);
+                return currentStaffNames.filter(name => name.toLowerCase().includes(searchLower)).slice(0, 10);
+            }, [currentStaffNames, staffSearch]);
+
+            // Автодополнение для формы подачи заявки (из базы всех сотрудников)
+            const applyAutocompleteOptions = useMemo(() => {
+                if (!applyName || applyName.length < 1) return [];
+                const searchLower = applyName.toLowerCase();
+                return staffDatabase
+                    .filter(staff => staff.name && staff.name.toLowerCase().includes(searchLower))
+                    .map(staff => staff.name)
+                    .slice(0, 5);
+            }, [staffDatabase, applyName]);
 
             const filteredEvents = useMemo(() => {
                 let result = events;
@@ -300,7 +342,6 @@
             }, [events, filter, staffSearch]);
 
             const handleSendApplication = async (event) => {
-                // Валидация телефона (простой паттерн для мобильных РФ + СНГ)
                 const phoneDigits = applyPhone.replace(/\D/g, '');
                 if (applyName.trim().length < 2) {
                     alert("Пожалуйста, введите фамилию");
@@ -353,7 +394,7 @@
                                     {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
                                 </div>
                             </div>
-                            <button onClick={() => fetchEvents()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[4px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
+                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[4px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
                                 <img src="catering-b.ico" alt="Logo" className={`w-9 h-9 object-contain ${loading ? 'rotate-anim' : ''}`} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>'; }} />
                             </button>
                         </header>
@@ -409,7 +450,11 @@
                                     const timeDisplay = event.start ? (event.end ? `${event.start} – ${event.end}` : event.start) : null;
 
                                     return (
-                                        <div key={eventId} onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') toggleExpand(eventId); }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
+                                        <div key={eventId} onClick={(e) => { 
+                                            // Если кликнули на элементы формы, не сворачиваем карточку
+                                            if (e.target.closest('.apply-form-container')) return;
+                                            toggleExpand(eventId); 
+                                        }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             <div className="p-5 flex items-center">
                                                 <div className="space-y-1 w-full">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
@@ -452,9 +497,9 @@
                                                             );
                                                         })}
 
-                                                        {/* Кнопка "МОГУ" и форма */}
+                                                        {/* Кнопка "МОГУ" и форма с автозаполнением */}
                                                         {missing.length > 0 && (
-                                                            <div className="mt-6 pt-4 border-t border-white/5">
+                                                            <div className="mt-6 pt-4 border-t border-white/5 apply-form-container">
                                                                 {!applyingFor ? (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
@@ -463,7 +508,7 @@
                                                                         {renderIcon('CheckCircle2', 20)} М О Г У
                                                                     </button>
                                                                 ) : applyingFor === eventId && (
-                                                                    <div className="bg-black/30 p-5 rounded-[20px] border border-red-500/30 space-y-4 fade-in" onClick={e => e.stopPropagation()}>
+                                                                    <div className="bg-black/30 p-5 rounded-[20px] border border-red-500/30 space-y-4 fade-in">
                                                                         <div className="text-center mb-2">
                                                                             <span className="text-[11px] font-bold text-red-400 uppercase tracking-widest">Оставить заявку</span>
                                                                         </div>
@@ -481,9 +526,29 @@
                                                                                             type="text" 
                                                                                             placeholder="фамилия" 
                                                                                             value={applyName}
-                                                                                            onChange={e => setApplyName(e.target.value)}
+                                                                                            onChange={e => {
+                                                                                                setApplyName(e.target.value);
+                                                                                                setShowApplyAutocomplete(true);
+                                                                                            }}
+                                                                                            onFocus={() => setShowApplyAutocomplete(true)}
                                                                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-accent outline-none"
                                                                                         />
+                                                                                        {showApplyAutocomplete && applyAutocompleteOptions.length > 0 && (
+                                                                                            <div className="apply-autocomplete">
+                                                                                                {applyAutocompleteOptions.map((opt, i) => (
+                                                                                                    <div 
+                                                                                                        key={i} 
+                                                                                                        onClick={() => {
+                                                                                                            setApplyName(opt);
+                                                                                                            setShowApplyAutocomplete(false);
+                                                                                                        }}
+                                                                                                        className="px-4 py-2 text-xs border-b border-white/5 last:border-0 hover:bg-brand-accent hover:text-brand-dark cursor-pointer transition-colors"
+                                                                                                    >
+                                                                                                        {opt}
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                     <div className="relative">
                                                                                         <input 
@@ -498,7 +563,10 @@
                                                                                 
                                                                                 <div className="flex gap-2">
                                                                                     <button 
-                                                                                        onClick={() => setApplyingFor(null)}
+                                                                                        onClick={() => {
+                                                                                            setApplyingFor(null);
+                                                                                            setShowApplyAutocomplete(false);
+                                                                                        }}
                                                                                         className="px-4 py-3 bg-white/5 text-white/50 rounded-xl font-bold text-xs uppercase"
                                                                                     >
                                                                                         Отмена
