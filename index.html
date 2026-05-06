@@ -7,8 +7,8 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
@@ -16,20 +16,16 @@
     <script src="https://unpkg.com/lucide-react@latest"></script>
 
     <style>
-        body { background-color: #14161a; margin: 0; }
+        body { background-color: #14161a; margin: 0; color: white; }
+        /* Плавное появление, чтобы не было мерцания */
+        #root { min-height: 100vh; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        
-        // В браузере иконки лежат в lucideReact
-        const { 
-            Calendar, MapPin, Clock, Upload, Info, UtensilsCrossed, 
-            GlassWater, ChefHat, Droplets, User, UserPlus, RefreshCw 
-        } = window.lucideReact;
+        const { useState, useEffect, useMemo } = React;
 
         const App = () => {
             const [events, setEvents] = useState([]);
@@ -37,15 +33,26 @@
             const [dragActive, setDragActive] = useState(false);
             const [error, setError] = useState(null);
 
+            // Безопасное получение иконок из глобального объекта
+            const Icons = useMemo(() => {
+                return window.lucideReact || {};
+            }, []);
+
             const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+
+            // Функция-хелпер для рендеринга иконок с проверкой на существование
+            const renderIcon = (IconComponent, size = 20, className = "") => {
+                if (!IconComponent) return <div style={{width: size, height: size}} />;
+                return <IconComponent size={size} className={className} />;
+            };
 
             const getRoleIcon = (roleName, iconSize = 20) => {
                 const roleStr = String(roleName || '').toLowerCase();
-                if (roleStr.includes('официант') || roleStr === 'оф') return <UtensilsCrossed size={iconSize} />;
-                if (roleStr.includes('бармен') || roleStr === 'бар') return <GlassWater size={iconSize} />;
-                if (roleStr.includes('повар') || roleStr === 'пов') return <ChefHat size={iconSize} />;
-                if (roleStr.includes('мой') || roleStr === 'мой') return <Droplets size={iconSize} />;
-                return <User size={iconSize} />;
+                if (roleStr.includes('официант') || roleStr === 'оф') return renderIcon(Icons.UtensilsCrossed, iconSize);
+                if (roleStr.includes('бармен') || roleStr === 'бар') return renderIcon(Icons.GlassWater, iconSize);
+                if (roleStr.includes('повар') || roleStr === 'пов') return renderIcon(Icons.ChefHat, iconSize);
+                if (roleStr.includes('мой') || roleStr === 'мой') return renderIcon(Icons.Droplets, iconSize);
+                return renderIcon(Icons.User, iconSize);
             };
 
             const formatDate = (dateStr) => {
@@ -108,17 +115,22 @@
                 setError(null);
                 try {
                     const response = await fetch(DATA_URL);
-                    if (!response.ok) throw new Error("GitHub вернул ошибку " + response.status);
+                    if (!response.ok) throw new Error("Ошибка загрузки: " + response.status);
                     const data = await response.json();
                     processAndSetEvents(data);
                 } catch (err) {
-                    setError("Не удалось загрузить данные из сети. Используйте ручную загрузку.");
+                    setError("Авто-загрузка не удалась. Проверьте соединение или загрузите файл вручную.");
+                    console.error(err);
                 } finally {
                     setLoading(false);
                 }
             };
 
-            useEffect(() => { fetchEvents(); }, []);
+            useEffect(() => {
+                // Небольшая задержка, чтобы убедиться, что все скрипты в window прогрузились
+                const timer = setTimeout(fetchEvents, 100);
+                return () => clearTimeout(timer);
+            }, []);
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -126,7 +138,8 @@
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
-                        processAndSetEvents(JSON.parse(event.target.result));
+                        const json = JSON.parse(event.target.result);
+                        processAndSetEvents(json);
                         setError(null);
                     } catch (err) {
                         setError("Ошибка: Файл не является валидным JSON.");
@@ -136,7 +149,7 @@
             };
 
             return (
-                <div className="min-h-screen p-4 font-sans text-white antialiased">
+                <div className="min-h-screen p-4 font-sans antialiased bg-[#14161a]">
                     <div className="max-w-2xl mx-auto">
                         <header className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
                             <div>
@@ -145,20 +158,20 @@
                             </div>
                             <div className="flex gap-4">
                                 <button onClick={fetchEvents} className={`p-2 rounded-full hover:bg-white/5 text-[#c29b61] ${loading ? 'animate-spin' : ''}`}>
-                                    <RefreshCw size={18} />
+                                    {renderIcon(Icons.RefreshCw, 18)}
                                 </button>
                             </div>
                         </header>
 
                         {error && (
                             <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
-                                <Info size={14} /> {error}
+                                {renderIcon(Icons.Info, 14)} {error}
                             </div>
                         )}
 
                         {events.length === 0 && !loading && (
                             <div 
-                                className={`border border-dashed rounded-2xl p-10 text-center ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
+                                className={`relative border border-dashed rounded-2xl p-10 text-center transition-all ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
                                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                                 onDragLeave={() => setDragActive(false)}
                                 onDrop={(e) => {
@@ -167,7 +180,9 @@
                                 }}
                             >
                                 <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                <Upload className="mx-auto mb-4 text-[#c29b61]" size={32} />
+                                <div className="flex justify-center mb-4 text-[#c29b61]">
+                                    {renderIcon(Icons.Upload, 32)}
+                                </div>
                                 <p className="text-sm">Загрузите JSON или перетащите файл</p>
                             </div>
                         )}
@@ -178,17 +193,17 @@
                                 const allStaff = [...(event.staff || []), ...missing];
 
                                 return (
-                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden">
+                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden shadow-xl">
                                         <div className="p-5">
                                             <div className="flex items-center gap-2 text-[#c29b61] text-xs font-bold uppercase mb-1">
-                                                <Calendar size={14} />
+                                                {renderIcon(Icons.Calendar, 14)}
                                                 <span>{formatDate(event.date)}</span>
                                                 {event.start && <span className="text-[#8a8d91]">| {event.start}</span>}
                                             </div>
                                             <h2 className="text-xl font-bold mb-3">{event.name}</h2>
                                             
                                             <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-4">
-                                                <MapPin size={14} />
+                                                {renderIcon(Icons.MapPin, 14)}
                                                 <span className="truncate">{event.location}</span>
                                             </div>
 
@@ -208,8 +223,13 @@
                                                         </div>
                                                         {!person.isPlaceholder && (
                                                             <div className="flex items-center gap-2 px-2 py-1 bg-[#1c1f24] rounded-lg border border-white/5">
-                                                                <Clock size={12} className="text-[#c29b61]" />
+                                                                {renderIcon(Icons.Clock, 12, "text-[#c29b61]")}
                                                                 <span className="text-xs font-mono text-[#c29b61]">{person.time || '--:--'}</span>
+                                                            </div>
+                                                        )}
+                                                        {person.isPlaceholder && (
+                                                            <div className="text-[#c29b61]/30 mr-2">
+                                                                {renderIcon(Icons.UserPlus, 14)}
                                                             </div>
                                                         )}
                                                     </div>
