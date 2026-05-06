@@ -20,7 +20,7 @@
                         brand: {
                             dark: '#1F1713',    
                             card: '#604539',    
-                            accent: '#FFFFFF',
+                            accent: '#FFEED2',
                             light: '#FFFFFF',
                         }
                     }
@@ -49,7 +49,7 @@
         
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1F1713; }
-        ::-webkit-scrollbar-thumb { background: #FFFFFF; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #FFEED2; border-radius: 10px; }
         
         .rotate-anim { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -63,9 +63,12 @@
             object-fit: contain;
             padding: 6px;
         }
+        /* Инвертируем иконки, чтобы они были темными на светлом фоне #FFEED2 */
+        .role-icon-dark {
+            filter: brightness(0.2);
+        }
         .grayscale-img {
-            filter: grayscale(1) brightness(2);
-            opacity: 0.4;
+            filter: grayscale(1) opacity(0.3);
         }
     </style>
 </head>
@@ -112,16 +115,16 @@
                         <img 
                             src={src} 
                             alt={roleName} 
-                            className={`role-icon-img ${isPlaceholder ? 'grayscale-img' : ''}`}
+                            className={`role-icon-img ${isPlaceholder ? 'grayscale-img' : 'role-icon-dark'}`}
                             onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = `<div class="text-[8px] font-bold text-white/50">${roleName.substring(0,2).toUpperCase()}</div>`;
+                                e.target.parentElement.innerHTML = `<div class="text-[8px] font-bold text-brand-dark/50">${roleName.substring(0,2).toUpperCase()}</div>`;
                             }}
                         />
                     );
                 }
 
-                return renderIcon('User', 18, isPlaceholder ? "text-white/30" : "text-white");
+                return renderIcon('User', 18, isPlaceholder ? "text-brand-dark/30" : "text-brand-dark");
             };
 
             const formatDate = (dateStr) => {
@@ -246,7 +249,7 @@
 
                         {isInitialLoad && loading ? (
                             <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                                <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
                                 <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
                             </div>
                         ) : (
@@ -258,18 +261,18 @@
                                     return (
                                         <div key={event.id || idx} className="bg-brand-card rounded-2xl border border-white/10 overflow-hidden shadow-2xl fade-in" style={{animationDelay: `${idx * 0.1}s`}}>
                                             <div className="p-5">
-                                                <div className="flex items-center gap-2 text-white text-[11px] font-bold uppercase mb-2 tracking-wider">
-                                                    <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-md text-white">
-                                                        {renderIcon('Calendar', 12, "text-white")}
+                                                <div className="flex items-center gap-2 text-brand-accent text-[11px] font-bold uppercase mb-2 tracking-wider">
+                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md">
+                                                        {renderIcon('Calendar', 12, "text-brand-accent")}
                                                         <span>{formatDate(event.date)}</span>
                                                     </div>
                                                     {event.start && <span className="text-white/60 font-medium">/ {event.start}</span>}
                                                 </div>
                                                 
-                                                <h2 className="text-xl font-bold mb-3 text-white leading-tight">{event.name}</h2>
+                                                <h2 className="text-xl font-bold mb-3 text-brand-accent leading-tight">{event.name}</h2>
                                                 
                                                 <div className="flex items-center gap-2 text-white/80 text-sm mb-5 bg-black/20 p-2 rounded-lg inline-flex max-w-full">
-                                                    {renderIcon('MapPin', 14, "shrink-0 text-white")}
+                                                    {renderIcon('MapPin', 14, "shrink-0 text-white/60")}
                                                     <span className="truncate">{event.location}</span>
                                                 </div>
 
@@ -281,7 +284,7 @@
                                                         return (
                                                             <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
                                                                 <div className="flex items-center gap-3 overflow-hidden">
-                                                                    <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border border-white/10 ${person.isPlaceholder ? 'bg-transparent' : 'bg-brand-dark'} shadow-inner overflow-hidden`}>
+                                                                    <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden`}>
                                                                         {getRoleIcon(currentRole, person.isPlaceholder)}
                                                                     </div>
                                                                     
