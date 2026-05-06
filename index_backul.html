@@ -336,16 +336,11 @@
                 return result;
             }, [events, filter, staffSearch]);
 
-            // Валидация имени: одно слово, первая буква заглавная
             const handleNameInput = (val) => {
-                // 1. Убираем пробелы (только одно слово)
                 let name = val.replace(/\s/g, '');
-                
-                // 2. Делаем первую букву заглавной
                 if (name.length > 0) {
                     name = name.charAt(0).toUpperCase() + name.slice(1);
                 }
-                
                 setApplyName(name);
                 setIsPhoneAutoFilled(false);
                 setShowApplyAutocomplete(true);
@@ -377,7 +372,6 @@
             }, [applyName, isPhoneValid]);
 
             const handleSelectStaff = (staff) => {
-                // При выборе из подсказок также форматируем имя
                 handleNameInput(staff.name || '');
                 handlePhoneInput(staff.phone || '');
                 setIsPhoneAutoFilled(!!staff.phone);
@@ -497,6 +491,13 @@
                                                         {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
                                                     <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
+                                                    
+                                                    {/* Статус набора в свернутом виде */}
+                                                    {!isExpanded && (
+                                                        <div className="text-[11px] font-bold uppercase tracking-widest text-white mt-1">
+                                                            {hasUrgentVacancies ? "ТРЕБУЕТСЯ СОТРУДНИК" : "ПЕРСОНАЛ НАБРАН"}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -508,7 +509,8 @@
                                                     </div>
 
                                                     <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                        <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Состав команды</div>
+                                                        {/* Заголовок состава теперь белый */}
+                                                        <div className="text-[10px] uppercase font-black text-white tracking-[0.2em] mb-1">Состав команды</div>
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
                                                             const isSearchedStaff = staffSearch && !person.isPlaceholder && person.name && person.name.toLowerCase().includes(staffSearch.toLowerCase().trim());
