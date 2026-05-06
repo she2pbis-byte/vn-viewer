@@ -492,7 +492,6 @@
                                                     </div>
                                                     <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                     
-                                                    {/* Статус набора в свернутом виде */}
                                                     {!isExpanded && (
                                                         <div className="text-[11px] font-bold uppercase tracking-widest text-white mt-1">
                                                             {hasUrgentVacancies ? "ТРЕБУЕТСЯ СОТРУДНИК" : "ПЕРСОНАЛ НАБРАН"}
@@ -509,7 +508,6 @@
                                                     </div>
 
                                                     <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                        {/* Заголовок состава теперь белый */}
                                                         <div className="text-[10px] uppercase font-black text-white tracking-[0.2em] mb-1">Состав команды</div>
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
@@ -525,8 +523,7 @@
                                                                         </div>
                                                                     </div>
                                                                     {!person.isPlaceholder ? (
-                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
-                                                                            {renderIcon('Clock', 13, isSearchedStaff ? "text-brand-dark/70" : "text-white/70")}
+                                                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
                                                                             <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
                                                                         </div>
                                                                     ) : <div className="p-1.5 text-white/20 animate-pulse">{renderIcon('UserPlus', 18, "text-white/40")}</div>}
