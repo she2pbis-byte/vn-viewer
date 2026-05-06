@@ -117,13 +117,13 @@
                             className={`role-icon-img ${isPlaceholder ? 'grayscale-img' : 'role-icon-dark'}`}
                             onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = `<div class="text-[8px] font-bold text-brand-dark/50">${roleName.substring(0,2).toUpperCase()}</div>`;
+                                e.target.parentElement.innerHTML = `<div class="text-[10px] font-bold text-brand-dark/50">${roleName.substring(0,2).toUpperCase()}</div>`;
                             }}
                         />
                     );
                 }
 
-                return renderIcon('User', 18, isPlaceholder ? "text-brand-dark/30" : "text-brand-dark");
+                return renderIcon('User', 22, isPlaceholder ? "text-brand-dark/30" : "text-brand-dark");
             };
 
             const formatDate = (dateStr) => {
@@ -213,56 +213,56 @@
             return (
                 <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
                     <div className="max-w-2xl mx-auto">
-                        <header className="mb-6 flex items-center justify-between border-b border-white/20 pb-4">
+                        <header className="mb-8 flex items-center justify-between border-b border-white/20 pb-5">
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Мероприятия</h1>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
+                                <h1 className="text-3xl font-bold tracking-tight text-white mb-1.5">Мероприятия</h1>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[14px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
                                     {lastUpdated && (
-                                        <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>
+                                        <span className="text-[14px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>
                                     )}
                                 </div>
                             </div>
                             <button 
                                 onClick={() => fetchEvents()}
                                 disabled={loading}
-                                className={`relative w-12 h-12 rounded-full bg-brand-card flex items-center justify-center border-2 border-white/10 overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'}`}
+                                className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-2 border-white/10 overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'}`}
                             >
                                 <img 
                                     src="catering-b.ico" 
                                     alt="Logo" 
-                                    className={`w-8 h-8 object-contain ${loading ? 'rotate-anim' : ''}`}
+                                    className={`w-10 h-10 object-contain ${loading ? 'rotate-anim' : ''}`}
                                     onError={(e) => {
                                         e.target.style.display = 'none';
-                                        e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>';
+                                        e.target.parentElement.innerHTML = '<div class="text-sm font-bold text-white">VN</div>';
                                     }}
                                 />
                             </button>
                         </header>
 
                         {error && !loading && (
-                            <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-xs flex items-center gap-2 fade-in">
-                                {renderIcon('Info', 14, "text-brand-accent")} {error}
+                            <div className="mb-5 p-5 bg-white/5 border border-white/10 text-white rounded-xl text-sm flex items-center gap-2.5 fade-in">
+                                {renderIcon('Info', 16, "text-brand-accent")} {error}
                             </div>
                         )}
 
                         {isInitialLoad && loading ? (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                                <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
+                            <div className="flex flex-col items-center justify-center py-24 opacity-40">
+                                <div className="w-12 h-12 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-5"></div>
+                                <p className="text-base font-bold uppercase tracking-widest">Загрузка данных...</p>
                             </div>
                         ) : (
-                            <div className="space-y-5">
+                            <div className="space-y-6">
                                 {events.map((event, idx) => {
                                     const missing = getMissingStaff(event);
                                     const allStaff = [...(event.staff || []), ...missing];
 
                                     return (
-                                        <div key={event.id || idx} className="bg-brand-card rounded-2xl border border-white/10 overflow-hidden shadow-2xl fade-in" style={{animationDelay: `${idx * 0.1}s`}}>
-                                            <div className="p-5">
-                                                {/* Заголовок карточки: Дата, Время и Название */}
-                                                <div className="mb-4 space-y-1">
-                                                    <div className="flex items-baseline gap-2 text-brand-accent font-bold text-xl leading-tight">
+                                        <div key={event.id || idx} className="bg-brand-card rounded-3xl border border-white/10 overflow-hidden shadow-2xl fade-in" style={{animationDelay: `${idx * 0.1}s`}}>
+                                            <div className="p-6">
+                                                {/* Заголовок карточки: Дата, Время и Название (+20% к размеру) */}
+                                                <div className="mb-5 space-y-1.5">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-2xl leading-tight">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {event.start && (
                                                             <>
@@ -271,44 +271,44 @@
                                                             </>
                                                         )}
                                                     </div>
-                                                    <h2 className="text-xl font-bold text-brand-accent leading-tight">{event.name}</h2>
+                                                    <h2 className="text-2xl font-bold text-brand-accent leading-tight">{event.name}</h2>
                                                 </div>
                                                 
-                                                <div className="flex items-center gap-2 text-white/80 text-sm mb-5 bg-black/20 p-2 rounded-lg inline-flex max-w-full">
-                                                    {renderIcon('MapPin', 14, "shrink-0 text-white/60")}
+                                                <div className="flex items-center gap-2.5 text-white/90 text-base mb-6 bg-black/20 p-3 rounded-xl inline-flex max-w-full">
+                                                    {renderIcon('MapPin', 17, "shrink-0 text-white/60")}
                                                     <span className="truncate">{event.location}</span>
                                                 </div>
 
-                                                <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                    <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Состав команды</div>
+                                                <div className="space-y-3 border-t border-white/10 pt-6">
+                                                    <div className="text-[12px] uppercase font-black text-white/40 tracking-[0.2em] mb-1.5">Состав команды</div>
                                                     {allStaff.map((person, pIdx) => {
                                                         const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
                                                         
                                                         return (
-                                                            <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
-                                                                <div className="flex items-center gap-3 overflow-hidden">
-                                                                    <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden`}>
+                                                            <div key={person.id || pIdx} className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
+                                                                <div className="flex items-center gap-3.5 overflow-hidden">
+                                                                    <div className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden`}>
                                                                         {getRoleIcon(currentRole, person.isPlaceholder)}
                                                                     </div>
                                                                     
                                                                     <div className="overflow-hidden">
-                                                                        <div className={`text-[13px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : 'text-white'}`}>
+                                                                        <div className={`text-[15.5px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : 'text-white'}`}>
                                                                             {person.isPlaceholder ? 'Вакансия открыта' : person.name}
                                                                         </div>
-                                                                        <div className="text-[10px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
+                                                                        <div className="text-[12px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
                                                                             {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
                                                                         </div>
                                                                     </div>
                                                                 </div>
 
                                                                 {!person.isPlaceholder ? (
-                                                                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-black/30 rounded-lg border border-white/5 shrink-0">
-                                                                        {renderIcon('Clock', 12, "text-white/70")}
-                                                                        <span className="text-xs font-mono font-bold text-white">{person.time || '--:--'}</span>
+                                                                    <div className="flex items-center gap-2 px-3 py-2 bg-black/30 rounded-xl border border-white/5 shrink-0">
+                                                                        {renderIcon('Clock', 14, "text-white/70")}
+                                                                        <span className="text-sm font-mono font-bold text-white">{person.time || '--:--'}</span>
                                                                     </div>
                                                                 ) : (
                                                                     <div className="p-2 text-white/20 animate-pulse">
-                                                                        {renderIcon('UserPlus', 18, "text-white/40")}
+                                                                        {renderIcon('UserPlus', 22, "text-white/40")}
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -322,8 +322,8 @@
                             </div>
                         )}
                     </div>
-                    <div className="h-20 flex items-center justify-center opacity-20">
-                        <span className="text-[10px] font-bold tracking-widest uppercase">VN Event Management System</span>
+                    <div className="h-24 flex items-center justify-center opacity-20">
+                        <span className="text-[12px] font-bold tracking-widest uppercase">VN Event Management System</span>
                     </div>
                 </div>
             );
