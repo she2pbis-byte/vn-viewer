@@ -20,8 +20,8 @@
                         brand: {
                             dark: '#1F1713',    
                             card: '#604539',    
-                            accent: '#FFFFFF',  // Изменено на белый для акцентов
-                            light: '#FFFFFF',   // Изменено на чисто белый
+                            accent: '#FFFFFF',
+                            light: '#FFFFFF',
                         }
                     }
                 }
@@ -41,6 +41,7 @@
             margin: 0; 
             color: #FFFFFF; 
             -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         #root { min-height: 100vh; }
         .transition-all { transition: all 0.2s ease-in-out; }
@@ -123,13 +124,22 @@
                 const processedEvents = rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
+                        
+                        // 1. Фильтр по дате (только будущие и сегодня)
                         const eventDate = new Date(event.date);
-                        return eventDate >= today;
+                        if (eventDate < today) return false;
+
+                        // 2. Фильтр по количеству нужных ролей (если все 0 — скрываем)
+                        const needed = event.neededStaff || {};
+                        const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+                        if (totalNeeded === 0) return false;
+
+                        return true;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 setEvents(processedEvents);
-                if (processedEvents.length === 0) setError("Актуальных мероприятий не найдено.");
+                if (processedEvents.length === 0) setError("Актуальных мероприятий с персоналом не найдено.");
             };
 
             const fetchEvents = async () => {
