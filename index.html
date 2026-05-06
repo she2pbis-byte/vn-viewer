@@ -2,8 +2,16 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мероприятия — Мониторинг</title>
+    
+    <!-- Фавикон -->
+    <link rel="icon" href="catering-b.ico" type="image/x-icon">
+    
+    <!-- Окрашивание статус-бара -->
+    <meta name="theme-color" content="#14161a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -16,9 +24,16 @@
     <script src="https://unpkg.com/lucide-react@latest"></script>
 
     <style>
-        body { background-color: #14161a; margin: 0; color: white; }
-        /* Плавное появление, чтобы не было мерцания */
+        body { 
+            background-color: #14161a; 
+            margin: 0; 
+            color: white; 
+            -webkit-tap-highlight-color: transparent;
+        }
         #root { min-height: 100vh; }
+        
+        /* Плавные переходы для интерактивных элементов */
+        .transition-all { transition: all 0.2s ease-in-out; }
     </style>
 </head>
 <body>
@@ -33,14 +48,10 @@
             const [dragActive, setDragActive] = useState(false);
             const [error, setError] = useState(null);
 
-            // Безопасное получение иконок из глобального объекта
-            const Icons = useMemo(() => {
-                return window.lucideReact || {};
-            }, []);
+            const Icons = useMemo(() => window.lucideReact || {}, []);
 
             const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
 
-            // Функция-хелпер для рендеринга иконок с проверкой на существование
             const renderIcon = (IconComponent, size = 20, className = "") => {
                 if (!IconComponent) return <div style={{width: size, height: size}} />;
                 return <IconComponent size={size} className={className} />;
@@ -101,21 +112,16 @@
                 const processedEvents = rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
-                        
-                        // 1. Проверка даты (будущие или сегодня)
                         const eventDate = new Date(event.date);
                         const isFuture = eventDate >= today;
-
-                        // 2. Проверка наличия нужных сотрудников (хотя бы один > 0)
                         const needed = event.neededStaff || {};
                         const hasNeededStaff = Object.values(needed).some(count => parseInt(count) > 0);
-
                         return isFuture && hasNeededStaff;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 setEvents(processedEvents);
-                if (processedEvents.length === 0) setError("Актуальных мероприятий с потребностью в персонале не найдено.");
+                if (processedEvents.length === 0) setError("Актуальных мероприятий не найдено.");
             };
 
             const fetchEvents = async () => {
@@ -127,7 +133,7 @@
                     const data = await response.json();
                     processAndSetEvents(data);
                 } catch (err) {
-                    setError("Авто-загрузка не удалась. Проверьте соединение или загрузите файл вручную.");
+                    setError("Ошибка загрузки данных. Попробуйте обновить вручную.");
                     console.error(err);
                 } finally {
                     setLoading(false);
@@ -135,7 +141,6 @@
             };
 
             useEffect(() => {
-                // Небольшая задержка, чтобы убедиться, что все скрипты в window прогрузились
                 const timer = setTimeout(fetchEvents, 100);
                 return () => clearTimeout(timer);
             }, []);
@@ -157,29 +162,30 @@
             };
 
             return (
-                <div className="min-h-screen p-4 font-sans antialiased bg-[#14161a]">
+                <div className="min-h-screen p-4 font-sans antialiased bg-[#14161a] text-slate-200">
                     <div className="max-w-2xl mx-auto">
                         <header className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
                             <div>
-                                <h1 className="text-2xl font-bold">Мероприятия</h1>
-                                <span className="text-[10px] text-[#8a8d91] uppercase tracking-widest">v. GitHub Auto-Sync</span>
+                                <h1 className="text-2xl font-bold tracking-tight text-white">Мероприятия</h1>
+                                <span className="text-[10px] text-[#8a8d91] uppercase tracking-widest font-medium">Monitoring System</span>
                             </div>
-                            <div className="flex gap-4">
-                                <button onClick={fetchEvents} className={`p-2 rounded-full hover:bg-white/5 text-[#c29b61] ${loading ? 'animate-spin' : ''}`}>
-                                    {renderIcon(Icons.RefreshCw, 18)}
-                                </button>
-                            </div>
+                            <button 
+                                onClick={fetchEvents} 
+                                className={`p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-[#c29b61] active:scale-95 transition-all ${loading ? 'animate-spin' : ''}`}
+                            >
+                                {renderIcon(Icons.RefreshCw, 18)}
+                            </button>
                         </header>
 
                         {error && (
                             <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
-                                {renderIcon(Icons.Info, 14)} {error}
+                                {renderIcon(Icons.AlertCircle, 14)} {error}
                             </div>
                         )}
 
                         {events.length === 0 && !loading && (
                             <div 
-                                className={`relative border border-dashed rounded-2xl p-10 text-center transition-all ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
+                                className={`relative border border-dashed rounded-2xl p-12 text-center transition-all ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
                                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                                 onDragLeave={() => setDragActive(false)}
                                 onDrop={(e) => {
@@ -188,56 +194,68 @@
                                 }}
                             >
                                 <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                <div className="flex justify-center mb-4 text-[#c29b61]">
-                                    {renderIcon(Icons.Upload, 32)}
+                                <div className="flex justify-center mb-4 text-[#c29b61]/50">
+                                    {renderIcon(Icons.FileJson, 40)}
                                 </div>
-                                <p className="text-sm">Загрузите JSON или перетащите файл</p>
+                                <p className="text-sm text-[#8a8d91]">Перетащите JSON файл сюда или нажмите для выбора</p>
                             </div>
                         )}
 
-                        <div className="space-y-4">
+                        <div className="space-y-5">
                             {events.map((event, idx) => {
                                 const missing = getMissingStaff(event);
                                 const allStaff = [...(event.staff || []), ...missing];
 
                                 return (
-                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
                                         <div className="p-5">
-                                            <div className="flex items-center gap-2 text-[#c29b61] text-xs font-bold uppercase mb-1">
-                                                {renderIcon(Icons.Calendar, 14)}
-                                                <span>{formatDate(event.date)}</span>
-                                                {event.start && <span className="text-[#8a8d91]">| {event.start}</span>}
+                                            <div className="flex items-center gap-2 text-[#c29b61] text-[11px] font-bold uppercase mb-2 tracking-wider">
+                                                <div className="flex items-center gap-1.5 bg-[#c29b61]/10 px-2 py-0.5 rounded-md">
+                                                    {renderIcon(Icons.Calendar, 12)}
+                                                    <span>{formatDate(event.date)}</span>
+                                                </div>
+                                                {event.start && <span className="text-[#8a8d91] font-medium">/ {event.start}</span>}
                                             </div>
-                                            <h2 className="text-xl font-bold mb-3">{event.name}</h2>
                                             
-                                            <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-4">
-                                                {renderIcon(Icons.MapPin, 14)}
+                                            <h2 className="text-xl font-bold mb-3 text-white leading-tight">{event.name}</h2>
+                                            
+                                            <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-5 bg-[#14161a]/50 p-2 rounded-lg inline-flex max-w-full">
+                                                {renderIcon(Icons.MapPin, 14, "shrink-0")}
                                                 <span className="truncate">{event.location}</span>
                                             </div>
 
-                                            <div className="space-y-2 border-t border-white/5 pt-4">
+                                            <div className="space-y-2.5 border-t border-white/5 pt-5">
                                                 {allStaff.map((person, pIdx) => (
-                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-2 rounded-xl border ${person.isPlaceholder ? 'bg-[#14161a]/40 border-dashed border-[#c29b61]/20 opacity-70' : 'bg-[#14161a] border-white/[0.03]'}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-9 h-9 rounded-full bg-[#1c1f24] flex items-center justify-center text-[#c29b61] border border-white/5">
-                                                                {person.isPlaceholder ? getRoleIcon(person.roleKey, 16) : getRoleIcon(person.rolesDisplay || (person.roles?.[0]), 18)}
+                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-[#1c1f24] border-dashed border-[#c29b61]/30 opacity-80' : 'bg-[#14161a]/60 border-white/[0.03] hover:bg-[#14161a]'}`}>
+                                                        <div className="flex items-center gap-3 overflow-hidden">
+                                                            {/* Иконка роли */}
+                                                            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-[#c29b61]/5 border-[#c29b61]/20 text-[#c29b61]' : 'bg-[#1c1f24] border-white/5 text-[#c29b61]'}`}>
+                                                                {person.isPlaceholder ? getRoleIcon(person.roleKey, 18) : getRoleIcon(person.rolesDisplay || (person.roles?.[0]), 20)}
                                                             </div>
-                                                            <div>
-                                                                <div className={`text-sm font-bold ${person.isPlaceholder ? 'text-[#c29b61]' : 'text-white'}`}>
-                                                                    {person.isPlaceholder ? 'Нужен сотрудник' : person.name}
+                                                            
+                                                            <div className="overflow-hidden">
+                                                                <div className="flex items-center gap-2">
+                                                                    {/* Иконка контакта (Запрос №1) */}
+                                                                    {!person.isPlaceholder && renderIcon(Icons.Contact, 14, "text-[#8a8d91] shrink-0")}
+                                                                    
+                                                                    <div className={`text-[13px] font-semibold truncate ${person.isPlaceholder ? 'text-[#c29b61]' : 'text-white'}`}>
+                                                                        {person.isPlaceholder ? 'Требуется' : person.name}
+                                                                    </div>
                                                                 </div>
-                                                                <div className="text-[10px] text-[#8a8d91] uppercase">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
+                                                                <div className="text-[10px] text-[#8a8d91] uppercase font-medium mt-0.5 tracking-tight">
+                                                                    {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        {!person.isPlaceholder && (
-                                                            <div className="flex items-center gap-2 px-2 py-1 bg-[#1c1f24] rounded-lg border border-white/5">
+
+                                                        {!person.isPlaceholder ? (
+                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#1c1f24] rounded-lg border border-white/5 shrink-0">
                                                                 {renderIcon(Icons.Clock, 12, "text-[#c29b61]")}
-                                                                <span className="text-xs font-mono text-[#c29b61]">{person.time || '--:--'}</span>
+                                                                <span className="text-xs font-mono font-bold text-[#c29b61]">{person.time || '--:--'}</span>
                                                             </div>
-                                                        )}
-                                                        {person.isPlaceholder && (
-                                                            <div className="text-[#c29b61]/30 mr-2">
-                                                                {renderIcon(Icons.UserPlus, 14)}
+                                                        ) : (
+                                                            <div className="p-2 text-[#c29b61]/40">
+                                                                {renderIcon(Icons.UserPlus, 16)}
                                                             </div>
                                                         )}
                                                     </div>
@@ -249,6 +267,8 @@
                             })}
                         </div>
                     </div>
+                    {/* Нижний отступ для мобильных */}
+                    <div className="h-10"></div>
                 </div>
             );
         };
