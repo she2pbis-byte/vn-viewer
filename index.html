@@ -100,7 +100,6 @@
             border: 4px solid red !important;
         }
 
-        /* Styles for Autocomplete */
         .autocomplete-dropdown {
             position: absolute;
             top: 100%;
@@ -114,6 +113,10 @@
             max-height: 250px;
             overflow-y: auto;
             box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7);
+        }
+
+        .clear-btn:active {
+            transform: scale(0.8);
         }
     </style>
 </head>
@@ -364,7 +367,6 @@
                             </button>
                         </div>
 
-                        {/* Search input with 2px brand-accent border */}
                         <div className="mb-6 relative" ref={autocompleteRef}>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-40">
@@ -384,9 +386,11 @@
                                 {staffSearch && (
                                     <button 
                                         onClick={() => setStaffSearch('')}
-                                        className="absolute inset-y-0 right-3 flex items-center text-white/30 hover:text-white/60 px-1"
+                                        className="clear-btn absolute inset-y-0 right-3 flex items-center justify-center w-8 transition-transform"
                                     >
-                                        {renderIcon('X', 18)}
+                                        <div className="bg-red-500 rounded-full p-1 shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                                            {renderIcon('X', 14, "text-white stroke-[3px]")}
+                                        </div>
                                     </button>
                                 )}
                             </div>
