@@ -350,16 +350,17 @@
                             </button>
                         </header>
 
+                        {/* СЕКЦИЯ ФИЛЬТРОВ С ИЗМЕНЕННЫМИ СКРУГЛЕНИЯМИ */}
                         <div className="mb-3 flex gap-2">
                             <button 
                                 onClick={() => setFilter('ALL')}
-                                className={`flex-1 py-2.5 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-transparent text-white/60 border-white/20'}`}
+                                className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.1)]' : 'bg-white/5 text-white/60 border-white/10'}`}
                             >
                                 Все
                             </button>
                             <button 
                                 onClick={() => setFilter('VACANCY')}
-                                className={`flex-1 py-2.5 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-transparent text-white/60 border-white/20'}`}
+                                className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-white/5 text-white/60 border-white/10'}`}
                             >
                                 Есть вакансия
                             </button>
@@ -483,7 +484,6 @@
                                                         {event.name}
                                                     </h2>
                                                 </div>
-                                                {/* Иконка шеврона удалена для более чистого вида */}
                                             </div>
 
                                             <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
