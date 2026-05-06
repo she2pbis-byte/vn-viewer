@@ -104,7 +104,6 @@
             box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7);
         }
 
-        /* Дополнительный стиль для автодополнения внутри формы */
         .apply-autocomplete {
             position: absolute;
             z-index: 60;
@@ -131,7 +130,7 @@
 
         const App = () => {
             const [events, setEvents] = useState([]);
-            const [staffDatabase, setStaffDatabase] = useState([]); // База всех сотрудников
+            const [staffDatabase, setStaffDatabase] = useState([]);
             const [loading, setLoading] = useState(false);
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
@@ -146,6 +145,7 @@
             const [applyingFor, setApplyingFor] = useState(null);
             const [applyName, setApplyName] = useState('');
             const [applyPhone, setApplyPhone] = useState('');
+            const [isPhoneAutoFilled, setIsPhoneAutoFilled] = useState(false);
             const [showApplyAutocomplete, setShowApplyAutocomplete] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [submitStatus, setSubmitStatus] = useState(null);
@@ -171,6 +171,7 @@
                     setSubmitStatus(null);
                     setApplyName('');
                     setApplyPhone('');
+                    setIsPhoneAutoFilled(false);
                 }
                 setExpandedEventId(prev => prev === id ? null : id);
             };
@@ -248,8 +249,7 @@
                         if (eventDate < today) return false;
                         const needed = event.neededStaff || {};
                         const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-                        const hasCurrentStaff = event.staff && event.staff.length > 0;
-                        return totalNeeded > 0 || hasCurrentStaff;
+                        return totalNeeded > 0 || (event.staff && event.staff.length > 0);
                     })
                     .map(event => ({
                         ...event,
@@ -266,7 +266,6 @@
             const fetchInitialData = async () => {
                 setLoading(true);
                 try {
-                    // Загружаем мероприятия и базу сотрудников параллельно
                     const [eventsRes, staffRes] = await Promise.all([
                         fetch(`${EVENTS_URL}?t=${Date.now()}`),
                         fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
@@ -279,7 +278,6 @@
                     
                     if (staffRes.ok) {
                         const staffData = await staffRes.json();
-                        // Предполагаем, что staffData это массив объектов с полем 'name'
                         setStaffDatabase(Array.isArray(staffData) ? staffData : []);
                     }
                 } catch (err) {
@@ -306,7 +304,6 @@
                 };
             }, [REFRESH_INTERVAL]);
 
-            // Список имен из текущих мероприятий для фильтра поиска
             const currentStaffNames = useMemo(() => {
                 const names = new Set();
                 events.forEach(event => {
@@ -321,13 +318,11 @@
                 return currentStaffNames.filter(name => name.toLowerCase().includes(searchLower)).slice(0, 10);
             }, [currentStaffNames, staffSearch]);
 
-            // Автодополнение для формы подачи заявки (из базы всех сотрудников)
             const applyAutocompleteOptions = useMemo(() => {
                 if (!applyName || applyName.length < 1) return [];
                 const searchLower = applyName.toLowerCase();
                 return staffDatabase
                     .filter(staff => staff.name && staff.name.toLowerCase().includes(searchLower))
-                    .map(staff => staff.name)
                     .slice(0, 5);
             }, [staffDatabase, applyName]);
 
@@ -341,19 +336,36 @@
                 return result;
             }, [events, filter, staffSearch]);
 
+            // Валидация телефона: +7 или 8 и 10 цифр
+            const validatePhone = (phone) => {
+                const digits = phone.replace(/\D/g, '');
+                if (digits.length !== 11) return false;
+                return digits.startsWith('7') || digits.startsWith('8');
+            };
+
+            const handleSelectStaff = (staff) => {
+                setApplyName(staff.name);
+                setApplyPhone(staff.phone || '');
+                setIsPhoneAutoFilled(!!staff.phone);
+                setShowApplyAutocomplete(false);
+            };
+
             const handleSendApplication = async (event) => {
+                const cleanName = applyName.trim();
                 const phoneDigits = applyPhone.replace(/\D/g, '');
-                if (applyName.trim().length < 2) {
+
+                if (cleanName.length < 2) {
                     alert("Пожалуйста, введите фамилию");
                     return;
                 }
-                if (phoneDigits.length < 10) {
-                    alert("Пожалуйста, введите корректный номер телефона");
+
+                if (!validatePhone(applyPhone)) {
+                    alert("Пожалуйста, введите корректный номер телефона (11 цифр, начиная с 8 или +7)");
                     return;
                 }
 
                 setIsSubmitting(true);
-                const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${applyName}\n📞 Телефон: ${applyPhone}`;
+                const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${cleanName}\n📞 Телефон: ${applyPhone}`;
                 
                 try {
                     const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -369,6 +381,7 @@
                         setSubmitStatus('success');
                         setApplyName('');
                         setApplyPhone('');
+                        setIsPhoneAutoFilled(false);
                         setTimeout(() => {
                             setApplyingFor(null);
                             setSubmitStatus(null);
@@ -451,7 +464,6 @@
 
                                     return (
                                         <div key={eventId} onClick={(e) => { 
-                                            // Если кликнули на элементы формы, не сворачиваем карточку
                                             if (e.target.closest('.apply-form-container')) return;
                                             toggleExpand(eventId); 
                                         }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
@@ -497,7 +509,6 @@
                                                             );
                                                         })}
 
-                                                        {/* Кнопка "МОГУ" и форма с автозаполнением */}
                                                         {missing.length > 0 && (
                                                             <div className="mt-6 pt-4 border-t border-white/5 apply-form-container">
                                                                 {!applyingFor ? (
@@ -528,6 +539,7 @@
                                                                                             value={applyName}
                                                                                             onChange={e => {
                                                                                                 setApplyName(e.target.value);
+                                                                                                setIsPhoneAutoFilled(false);
                                                                                                 setShowApplyAutocomplete(true);
                                                                                             }}
                                                                                             onFocus={() => setShowApplyAutocomplete(true)}
@@ -535,16 +547,13 @@
                                                                                         />
                                                                                         {showApplyAutocomplete && applyAutocompleteOptions.length > 0 && (
                                                                                             <div className="apply-autocomplete">
-                                                                                                {applyAutocompleteOptions.map((opt, i) => (
+                                                                                                {applyAutocompleteOptions.map((staff, i) => (
                                                                                                     <div 
                                                                                                         key={i} 
-                                                                                                        onClick={() => {
-                                                                                                            setApplyName(opt);
-                                                                                                            setShowApplyAutocomplete(false);
-                                                                                                        }}
+                                                                                                        onClick={() => handleSelectStaff(staff)}
                                                                                                         className="px-4 py-2 text-xs border-b border-white/5 last:border-0 hover:bg-brand-accent hover:text-brand-dark cursor-pointer transition-colors"
                                                                                                     >
-                                                                                                        {opt}
+                                                                                                        {staff.name}
                                                                                                     </div>
                                                                                                 ))}
                                                                                             </div>
@@ -553,11 +562,19 @@
                                                                                     <div className="relative">
                                                                                         <input 
                                                                                             type="tel" 
-                                                                                            placeholder="номер телефона" 
+                                                                                            placeholder="номер телефона (+7 или 8...)" 
                                                                                             value={applyPhone}
-                                                                                            onChange={e => setApplyPhone(e.target.value)}
-                                                                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-accent outline-none"
+                                                                                            onChange={e => {
+                                                                                                setApplyPhone(e.target.value);
+                                                                                                setIsPhoneAutoFilled(false);
+                                                                                            }}
+                                                                                            className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-colors ${isPhoneAutoFilled ? 'border-brand-accent text-brand-accent' : 'border-white/10 focus:border-brand-accent'}`}
                                                                                         />
+                                                                                        {isPhoneAutoFilled && (
+                                                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                                                                {renderIcon('Check', 14, "text-brand-accent")}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 </div>
                                                                                 
