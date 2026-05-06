@@ -336,35 +336,53 @@
                 return result;
             }, [events, filter, staffSearch]);
 
-            const validatePhone = (phone) => {
-                const digits = phone.replace(/\D/g, '');
-                if (digits.length !== 11) return false;
-                return digits.startsWith('7') || digits.startsWith('8');
+            // Функция форматирования и валидации телефона при вводе
+            const handlePhoneInput = (val) => {
+                let digits = val.replace(/\D/g, '');
+                
+                // 1. Автоматическая замена 8 на +7 в начале
+                if (digits.startsWith('8')) {
+                    digits = '7' + digits.substring(1);
+                } 
+                // 2. Добавление +7 перед 9 в начале
+                else if (digits.startsWith('9')) {
+                    digits = '7' + digits;
+                }
+                
+                // Ограничиваем длину 11 цифрами (7 + 10 цифр номера)
+                digits = digits.substring(0, 11);
+                
+                if (digits.length > 0) {
+                    setApplyPhone('+' + digits);
+                } else {
+                    setApplyPhone('');
+                }
+                setIsPhoneAutoFilled(false);
             };
+
+            // 3. Валидация для активности кнопки (ровно 10 цифр после +7)
+            const isPhoneValid = useMemo(() => {
+                const digits = applyPhone.replace(/\D/g, '');
+                return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
+            }, [applyPhone]);
+
+            const isFormValid = useMemo(() => {
+                return applyName.trim().length >= 2 && isPhoneValid;
+            }, [applyName, isPhoneValid]);
 
             const handleSelectStaff = (staff) => {
                 setApplyName(staff.name);
-                setApplyPhone(staff.phone || '');
+                // При автозаполнении из БД также прогоняем через логику форматирования
+                handlePhoneInput(staff.phone || '');
                 setIsPhoneAutoFilled(!!staff.phone);
                 setShowApplyAutocomplete(false);
             };
 
             const handleSendApplication = async (event) => {
-                const cleanName = applyName.trim();
-                const phoneDigits = applyPhone.replace(/\D/g, '');
-
-                if (cleanName.length < 2) {
-                    alert("Пожалуйста, введите фамилию");
-                    return;
-                }
-
-                if (!validatePhone(applyPhone)) {
-                    alert("Пожалуйста, введите корректный номер телефона (11 цифр, начиная с 8 или +7)");
-                    return;
-                }
+                if (!isFormValid) return;
 
                 setIsSubmitting(true);
-                const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${cleanName}\n📞 Телефон: ${applyPhone}`;
+                const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${applyName.trim()}\n📞 Телефон: ${applyPhone}`;
                 
                 try {
                     const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -561,15 +579,12 @@
                                                                                     <div className="relative">
                                                                                         <input 
                                                                                             type="tel" 
-                                                                                            placeholder="номер телефона (+7 или 8...)" 
+                                                                                            placeholder="номер телефона (8... или 9...)" 
                                                                                             value={applyPhone}
-                                                                                            onChange={e => {
-                                                                                                setApplyPhone(e.target.value);
-                                                                                                setIsPhoneAutoFilled(false);
-                                                                                            }}
+                                                                                            onChange={e => handlePhoneInput(e.target.value)}
                                                                                             className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-colors ${isPhoneAutoFilled ? 'border-brand-accent text-brand-accent' : 'border-white/10 focus:border-brand-accent'}`}
                                                                                         />
-                                                                                        {isPhoneAutoFilled && (
+                                                                                        {isPhoneValid && (
                                                                                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                                                                                 {renderIcon('Check', 14, "text-brand-accent")}
                                                                                             </div>
@@ -589,8 +604,8 @@
                                                                                     </button>
                                                                                     <button 
                                                                                         onClick={() => handleSendApplication(event)}
-                                                                                        disabled={isSubmitting}
-                                                                                        className="flex-1 py-3 bg-brand-accent text-brand-dark rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+                                                                                        disabled={isSubmitting || !isFormValid}
+                                                                                        className="flex-1 py-3 bg-brand-accent text-brand-dark rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30"
                                                                                     >
                                                                                         {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon('Send', 14, "text-brand-dark")}
                                                                                         Отправить
