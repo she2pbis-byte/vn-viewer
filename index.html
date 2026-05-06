@@ -99,13 +99,29 @@
             animation: pulse-red-border 1.5s infinite ease-in-out;
             border: 4px solid red !important;
         }
+
+        /* Styles for Autocomplete */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: #2D221C;
+            border: 1px solid rgba(255, 238, 210, 0.2);
+            border-radius: 12px;
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         const App = () => {
             const [events, setEvents] = useState([]);
@@ -115,6 +131,11 @@
             const [lastUpdated, setLastUpdated] = useState(null);
             const [expandedEventId, setExpandedEventId] = useState(null);
             const [filter, setFilter] = useState('ALL');
+            
+            // Search / Staff Filter State
+            const [staffSearch, setStaffSearch] = useState('');
+            const [showAutocomplete, setShowAutocomplete] = useState(false);
+            const autocompleteRef = useRef(null);
 
             const Icons = useMemo(() => {
                 const lucide = window.LucideReact || window.lucideReact || {};
@@ -212,7 +233,8 @@
                         
                         const needed = event.neededStaff || {};
                         const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-                        return totalNeeded > 0;
+                        const hasCurrentStaff = event.staff && event.staff.length > 0;
+                        return totalNeeded > 0 || hasCurrentStaff;
                     })
                     .map(event => ({
                         ...event,
@@ -247,15 +269,57 @@
                 const intervalId = setInterval(() => {
                     fetchEvents(true);
                 }, REFRESH_INTERVAL);
-                return () => clearInterval(intervalId);
+
+                const handleClickOutside = (event) => {
+                    if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
+                        setShowAutocomplete(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+
+                return () => {
+                    clearInterval(intervalId);
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
             }, [REFRESH_INTERVAL]);
 
+            // All unique staff names for autocomplete
+            const allStaffNames = useMemo(() => {
+                const names = new Set();
+                events.forEach(event => {
+                    if (event.staff) {
+                        event.staff.forEach(person => {
+                            if (person.name) names.add(person.name);
+                        });
+                    }
+                });
+                return Array.from(names).sort();
+            }, [events]);
+
+            const filteredAutocompleteNames = useMemo(() => {
+                if (!staffSearch || staffSearch.length < 1) return [];
+                const searchLower = staffSearch.toLowerCase();
+                return allStaffNames.filter(name => 
+                    name.toLowerCase().includes(searchLower)
+                ).slice(0, 10);
+            }, [allStaffNames, staffSearch]);
+
             const filteredEvents = useMemo(() => {
+                let result = events;
+                
                 if (filter === 'VACANCY') {
-                    return events.filter(e => e._hasUrgent);
+                    result = result.filter(e => e._hasUrgent);
                 }
-                return events;
-            }, [events, filter]);
+
+                if (staffSearch.trim()) {
+                    const searchLower = staffSearch.toLowerCase().trim();
+                    result = result.filter(e => 
+                        e.staff && e.staff.some(p => p.name && p.name.toLowerCase().includes(searchLower))
+                    );
+                }
+
+                return result;
+            }, [events, filter, staffSearch]);
 
             return (
                 <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
@@ -287,7 +351,8 @@
                             </button>
                         </header>
 
-                        <div className="mb-6 flex gap-2">
+                        {/* Top Filters */}
+                        <div className="mb-3 flex gap-2">
                             <button 
                                 onClick={() => setFilter('ALL')}
                                 className={`flex-1 py-2.5 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-transparent text-white/60 border-white/20'}`}
@@ -300,6 +365,55 @@
                             >
                                 Есть вакансия
                             </button>
+                        </div>
+
+                        {/* Staff Search Input */}
+                        <div className="mb-6 relative" ref={autocompleteRef}>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-40">
+                                    {renderIcon('Search', 16)}
+                                </div>
+                                <input 
+                                    type="text"
+                                    value={staffSearch}
+                                    onChange={(e) => {
+                                        setStaffSearch(e.target.value);
+                                        setShowAutocomplete(true);
+                                    }}
+                                    onFocus={() => setShowAutocomplete(true)}
+                                    placeholder="введи свою фамилию..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-10 text-[14px] font-medium text-white placeholder:text-white/30 focus:outline-none focus:border-brand-accent/50 focus:bg-white/10 transition-all"
+                                />
+                                {staffSearch && (
+                                    <button 
+                                        onClick={() => setStaffSearch('')}
+                                        className="absolute inset-y-0 right-3 flex items-center text-white/30 hover:text-white/60 px-1"
+                                    >
+                                        {renderIcon('X', 18)}
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Autocomplete Dropdown */}
+                            {showAutocomplete && filteredAutocompleteNames.length > 0 && (
+                                <div className="autocomplete-dropdown border-brand-accent/30 bg-[#2D221C]">
+                                    {filteredAutocompleteNames.map((name, i) => (
+                                        <div 
+                                            key={i}
+                                            onClick={() => {
+                                                setStaffSearch(name);
+                                                setShowAutocomplete(false);
+                                            }}
+                                            className="px-4 py-3 text-[14px] border-b border-white/5 last:border-0 active:bg-brand-accent active:text-brand-dark transition-colors cursor-pointer flex items-center gap-3"
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-brand-accent/20 flex items-center justify-center text-[10px] font-bold text-brand-accent">
+                                                {name.charAt(0)}
+                                            </div>
+                                            {name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {error && !loading && (
@@ -316,8 +430,13 @@
                         ) : (
                             <div className="space-y-4">
                                 {filteredEvents.length === 0 && !loading && (
-                                    <div className="py-20 text-center opacity-40">
-                                        <p className="text-sm font-bold uppercase tracking-widest">Нет подходящих мероприятий</p>
+                                    <div className="py-20 text-center opacity-40 flex flex-col items-center gap-3">
+                                        <div className="bg-white/5 p-4 rounded-full">
+                                            {renderIcon('CalendarX2', 32, "text-white/40")}
+                                        </div>
+                                        <p className="text-sm font-bold uppercase tracking-widest px-10">
+                                            {staffSearch ? `Для сотрудника "${staffSearch}" мероприятий не найдено` : 'Нет подходящих мероприятий'}
+                                        </p>
                                     </div>
                                 )}
                                 {filteredEvents.map((event, idx) => {
@@ -369,15 +488,27 @@
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
                                                             
+                                                            // Highlight searched staff member
+                                                            const isSearchedStaff = staffSearch && !person.isPlaceholder && person.name && person.name.toLowerCase().includes(staffSearch.toLowerCase().trim());
+
                                                             return (
-                                                                <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
+                                                                <div 
+                                                                    key={person.id || pIdx} 
+                                                                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                                        isSearchedStaff 
+                                                                        ? 'bg-brand-accent/20 border-brand-accent shadow-[inset_0_0_10px_rgba(255,238,210,0.1)]' 
+                                                                        : person.isPlaceholder 
+                                                                            ? 'bg-white/5 border-dashed border-white/20' 
+                                                                            : 'bg-black/20 border-white/5'
+                                                                    }`}
+                                                                >
                                                                     <div className="flex items-center gap-3 overflow-hidden">
-                                                                        <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden`}>
+                                                                        <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden ${isSearchedStaff ? 'ring-2 ring-brand-accent ring-offset-2 ring-offset-brand-card' : ''}`}>
                                                                             {getRoleIcon(currentRole, person.isPlaceholder)}
                                                                         </div>
                                                                         
                                                                         <div className="overflow-hidden">
-                                                                            <div className={`text-[14px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : 'text-white'}`}>
+                                                                            <div className={`text-[14px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : isSearchedStaff ? 'text-brand-accent font-bold' : 'text-white'}`}>
                                                                                 {person.isPlaceholder ? 'Вакансия открыта' : person.name}
                                                                             </div>
                                                                             <div className="text-[11px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
@@ -387,9 +518,9 @@
                                                                     </div>
 
                                                                     {!person.isPlaceholder ? (
-                                                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/30 rounded-lg border border-white/5 shrink-0">
-                                                                            {renderIcon('Clock', 13, "text-white/70")}
-                                                                            <span className="text-[13px] font-mono font-bold text-white">{person.time || '--:--'}</span>
+                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
+                                                                            {renderIcon('Clock', 13, isSearchedStaff ? "text-brand-dark/70" : "text-white/70")}
+                                                                            <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
                                                                         </div>
                                                                     ) : (
                                                                         <div className="p-1.5 text-white/20 animate-pulse">
