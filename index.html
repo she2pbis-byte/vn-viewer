@@ -336,22 +336,29 @@
                 return result;
             }, [events, filter, staffSearch]);
 
-            // Функция форматирования и валидации телефона при вводе
-            const handlePhoneInput = (val) => {
-                let digits = val.replace(/\D/g, '');
+            // Валидация имени: одно слово, первая буква заглавная
+            const handleNameInput = (val) => {
+                // 1. Убираем пробелы (только одно слово)
+                let name = val.replace(/\s/g, '');
                 
-                // 1. Автоматическая замена 8 на +7 в начале
-                if (digits.startsWith('8')) {
-                    digits = '7' + digits.substring(1);
-                } 
-                // 2. Добавление +7 перед 9 в начале
-                else if (digits.startsWith('9')) {
-                    digits = '7' + digits;
+                // 2. Делаем первую букву заглавной
+                if (name.length > 0) {
+                    name = name.charAt(0).toUpperCase() + name.slice(1);
                 }
                 
-                // Ограничиваем длину 11 цифрами (7 + 10 цифр номера)
+                setApplyName(name);
+                setIsPhoneAutoFilled(false);
+                setShowApplyAutocomplete(true);
+            };
+
+            const handlePhoneInput = (val) => {
+                let digits = val.replace(/\D/g, '');
+                if (digits.startsWith('8')) {
+                    digits = '7' + digits.substring(1);
+                } else if (digits.startsWith('9')) {
+                    digits = '7' + digits;
+                }
                 digits = digits.substring(0, 11);
-                
                 if (digits.length > 0) {
                     setApplyPhone('+' + digits);
                 } else {
@@ -360,7 +367,6 @@
                 setIsPhoneAutoFilled(false);
             };
 
-            // 3. Валидация для активности кнопки (ровно 10 цифр после +7)
             const isPhoneValid = useMemo(() => {
                 const digits = applyPhone.replace(/\D/g, '');
                 return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
@@ -371,8 +377,8 @@
             }, [applyName, isPhoneValid]);
 
             const handleSelectStaff = (staff) => {
-                setApplyName(staff.name);
-                // При автозаполнении из БД также прогоняем через логику форматирования
+                // При выборе из подсказок также форматируем имя
+                handleNameInput(staff.name || '');
                 handlePhoneInput(staff.phone || '');
                 setIsPhoneAutoFilled(!!staff.phone);
                 setShowApplyAutocomplete(false);
@@ -554,11 +560,7 @@
                                                                                             type="text" 
                                                                                             placeholder="фамилия" 
                                                                                             value={applyName}
-                                                                                            onChange={e => {
-                                                                                                setApplyName(e.target.value);
-                                                                                                setIsPhoneAutoFilled(false);
-                                                                                                setShowApplyAutocomplete(true);
-                                                                                            }}
+                                                                                            onChange={e => handleNameInput(e.target.value)}
                                                                                             onFocus={() => setShowApplyAutocomplete(true)}
                                                                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-accent outline-none"
                                                                                         />
