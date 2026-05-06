@@ -325,7 +325,7 @@
                     <div className="max-w-2xl mx-auto">
                         <header className="mb-4 flex items-center justify-between border-b border-white/20 pb-4">
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Мероприятия</h1>
+                                <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Кейтеринг<br>"Ванильного неба"</h1>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
                                     {lastUpdated && (
@@ -468,8 +468,8 @@
                                             className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} 
                                             style={{animationDelay: `${idx * 0.05}s`}}
                                         >
-                                            <div className="p-5 flex items-center justify-between">
-                                                <div className="space-y-1 overflow-hidden pr-2">
+                                            <div className="p-5 flex items-center">
+                                                <div className="space-y-1 w-full">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && (
@@ -479,22 +479,9 @@
                                                             </>
                                                         )}
                                                     </div>
-                                                    <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white truncate'}`}>
+                                                    <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>
                                                         {event.name}
                                                     </h2>
-                                                </div>
-                                                
-                                                {/* ИНДИКАТОР СОСТОЯНИЯ (V / X) */}
-                                                <div className="shrink-0 ml-2">
-                                                    {isExpanded ? (
-                                                        <div className="w-10 h-10 flex items-center justify-center transition-all">
-                                                            {renderIcon('X', 32, "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]")}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="w-10 h-10 flex items-center justify-center transition-all">
-                                                            {renderIcon('ChevronDown', 32, "text-[#FFEED2] opacity-80")}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
 
