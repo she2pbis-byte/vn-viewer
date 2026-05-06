@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Мероприятия — Мониторинг</title>
+    <title>Мероприятия ВН</title>
     
     <link rel="icon" href="catering-b.ico" type="image/x-icon">
     
@@ -32,7 +32,6 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Подключаем Lucide корректно -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/lucide-react@latest"></script>
 
@@ -66,25 +65,22 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
 
-            // Исправленный доступ к иконкам для CDN версии
             const Icons = useMemo(() => {
                 const lucide = window.LucideReact || window.lucideReact || {};
-                // В CDN версии иконки часто лежат в свойстве icons или в самом корне объекта
                 return lucide.icons || lucide;
             }, []);
 
             const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
 
-            const renderIcon = (iconName, size = 20, className = "") => {
+            const renderIcon = (iconName, size = 20, className = "text-white") => {
                 const IconComponent = Icons[iconName];
                 if (!IconComponent) {
-                    console.warn(`Icon ${iconName} not found`);
                     return <div style={{width: size, height: size}} className="bg-white/10 rounded-full" />;
                 }
                 return <IconComponent size={size} className={className} />;
             };
 
-            const getRoleIcon = (roleName, iconSize = 20, className = "") => {
+            const getRoleIcon = (roleName, iconSize = 20, className = "text-white") => {
                 const roleStr = String(roleName || '').toLowerCase();
                 if (roleStr.includes('официант') || roleStr === 'оф') return renderIcon('UtensilsCrossed', iconSize, className);
                 if (roleStr.includes('бармен') || roleStr === 'бар') return renderIcon('GlassWater', iconSize, className);
@@ -142,8 +138,7 @@
                         if (eventDate < today) return false;
                         const needed = event.neededStaff || {};
                         const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-                        if (totalNeeded === 0) return false;
-                        return true;
+                        return totalNeeded > 0;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -194,7 +189,7 @@
 
                         {error && (
                             <div className="mb-4 p-4 bg-red-900/30 border border-red-500/30 text-white rounded-xl text-xs flex items-center gap-2">
-                                {renderIcon('AlertCircle', 14)} {error}
+                                {renderIcon('AlertCircle', 14, "text-red-400")} {error}
                             </div>
                         )}
 
@@ -228,7 +223,8 @@
                                                     return (
                                                         <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-brand-card border-dashed border-white/30' : 'bg-black/20 border-white/5 hover:bg-black/40'}`}>
                                                             <div className="flex items-center gap-3 overflow-hidden">
-                                                                <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border border-white/30 ${person.isPlaceholder ? 'bg-white/5' : 'bg-brand-card'}`}>
+                                                                {/* Кружок иконки: всегда темно-коричневый фон и белая иконка */}
+                                                                <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border border-white/20 bg-brand-card shadow-inner`}>
                                                                     {getRoleIcon(currentRole, 18, person.isPlaceholder ? "text-white/40" : "text-white")}
                                                                 </div>
                                                                 
@@ -249,7 +245,7 @@
                                                                 </div>
                                                             ) : (
                                                                 <div className="p-2 text-white/40">
-                                                                    {renderIcon('UserPlus', 16)}
+                                                                    {renderIcon('UserPlus', 16, "text-white/40")}
                                                                 </div>
                                                             )}
                                                         </div>
