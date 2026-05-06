@@ -42,9 +42,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-        // Конфигурация для уведомлений (Замените на свои данные)
-        const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ"; // Токен от @BotFather
-        const TG_CHAT_ID = "7016844853"; // Ваш ID или ID группы
+        const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ"; 
+        const TG_CHAT_ID = "7016844853"; 
 
         const App = () => {
             const [events, setEvents] = useState([]);
@@ -57,7 +56,6 @@
             const [staffSearch, setStaffSearch] = useState('');
             const [showAutocomplete, setShowAutocomplete] = useState(false);
             
-            // Состояние формы "Могу"
             const [bookingName, setBookingName] = useState('');
             const [bookingPhone, setBookingPhone] = useState('');
             const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,7 +69,13 @@
                 return Icon ? <Icon size={size} className={className} /> : null;
             };
 
-            // Загрузка данных
+            // Функция форматирования даты из YYYY-MM-DD в DD.MM.YYYY
+            const formatDate = (dateStr) => {
+                if (!dateStr) return "";
+                const [year, month, day] = dateStr.split("-");
+                return `${day}.${month}.${year}`;
+            };
+
             const fetchData = async (silent = false) => {
                 if (!silent) setLoading(true);
                 try {
@@ -100,7 +104,6 @@
                 fetchData();
             }, []);
 
-            // Автозаполнение телефона при вводе имени
             useEffect(() => {
                 const found = staffDb.find(s => s.name?.toLowerCase() === bookingName.trim().toLowerCase());
                 if (found && found.phone) {
@@ -108,7 +111,6 @@
                 }
             }, [bookingName, staffDb]);
 
-            // При глобальном поиске подставлять имя в форму
             useEffect(() => {
                 if (staffSearch) setBookingName(staffSearch);
             }, [staffSearch]);
@@ -134,10 +136,10 @@
 
             const sendTelegram = async (eventName, eventDate, role) => {
                 if (!TG_TOKEN || !TG_CHAT_ID) {
-                    alert("Система уведомлений не настроена (нет токена)");
+                    alert("Система уведомлений не настроена");
                     return;
                 }
-                const text = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 *Событие:* ${eventName} (${eventDate})\n👤 *Имя:* ${bookingName}\n📞 *Тел:* ${bookingPhone}\n🛠 *Роль:* ${role}`;
+                const text = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 *Событие:* ${eventName} (${formatDate(eventDate)})\n👤 *Имя:* ${bookingName}\n📞 *Тел:* ${bookingPhone}\n🛠 *Роль:* ${role}`;
                 
                 try {
                     const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -170,9 +172,21 @@
             };
 
             const filteredEvents = useMemo(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
                 return events.filter(e => {
+                    const eventDate = new Date(e.date);
+                    // 1. Фильтр по дате (только сегодня и будущие)
+                    const isFuture = eventDate >= today;
+                    if (!isFuture) return false;
+
+                    // 2. Фильтр по категории (Все / Вакансии)
                     const matchesFilter = filter === 'ALL' || (filter === 'VACANCY' && getMissingStaff(e).length > 0);
+                    
+                    // 3. Поиск по сотруднику
                     const matchesSearch = !staffSearch || e.staff?.some(p => p.name?.toLowerCase().includes(staffSearch.toLowerCase()));
+                    
                     return matchesFilter && matchesSearch;
                 }).sort((a, b) => new Date(a.date) - new Date(b.date));
             }, [events, filter, staffSearch]);
@@ -189,12 +203,11 @@
                             <h1 className="text-2xl font-bold text-brand-accent">Кейтеринг ВН</h1>
                             <p className="text-xs text-white/50 uppercase tracking-widest font-bold">Система бронирования</p>
                         </div>
-                        <div className="w-12 h-12 bg-brand-card rounded-full border-2 border-brand-accent flex items-center justify-center">
-                            <img src="catering-b.ico" className="w-8 h-8 opacity-80" alt="logo" />
+                        <div className="w-12 h-12 bg-brand-card rounded-full border-2 border-brand-accent flex items-center justify-center overflow-hidden">
+                            <img src="catering-b.ico" className="w-8 h-8 opacity-80" alt="logo" onError={(e) => e.target.style.display='none'} />
                         </div>
                     </header>
 
-                    {/* Поиск */}
                     <div className="relative mb-6">
                         <div className="absolute left-3 top-3.5 text-white/30">{renderIcon('Search', 18)}</div>
                         <input 
@@ -215,14 +228,15 @@
                         )}
                     </div>
 
-                    {/* Фильтры */}
                     <div className="flex gap-2 mb-6">
-                        <button onClick={() => setFilter('ALL')} className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border-2 transition-all ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'border-white/10 text-white/40'}`}>Все</button>
+                        <button onClick={() => setFilter('ALL')} className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border-2 transition-all ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'border-white/10 text-white/40'}`}>Все события</button>
                         <button onClick={() => setFilter('VACANCY')} className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border-2 transition-all ${filter === 'VACANCY' ? 'bg-red-500 text-white border-red-500' : 'border-white/10 text-white/40'}`}>Нужны люди</button>
                     </div>
 
-                    {/* Список */}
                     <div className="space-y-4">
+                        {filteredEvents.length === 0 && !loading && (
+                            <div className="text-center py-10 text-white/30 text-sm">Нет запланированных мероприятий</div>
+                        )}
                         {filteredEvents.map((event, idx) => {
                             const missing = getMissingStaff(event);
                             const isExpanded = expandedEventId === event.id;
@@ -233,8 +247,8 @@
                                      className={`bg-brand-card rounded-2xl border transition-all ${missing.length > 0 ? 'urgent-vacancy-border' : 'border-white/10'}`}>
                                     <div className="p-4">
                                         <div className="flex justify-between items-start">
-                                            <div className="text-brand-accent font-bold text-lg">{event.date} <span className="text-white/40 font-normal ml-2">|</span> <span className="text-white">{event.start}</span></div>
-                                            {missing.length > 0 && <span className="bg-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">НУЖНЫ ЛЮДИ</span>}
+                                            <div className="text-brand-accent font-bold text-lg">{formatDate(event.date)} <span className="text-white/40 font-normal ml-2">|</span> <span className="text-white">{event.start}</span></div>
+                                            {missing.length > 0 && <span className="bg-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">ВАКАНСИИ</span>}
                                         </div>
                                         <h3 className="text-lg font-bold mt-1">{event.name}</h3>
                                         <p className="text-xs text-white/50 flex items-center gap-1 mt-1">{renderIcon('MapPin', 12)} {event.location}</p>
@@ -257,7 +271,6 @@
                                                 ))}
                                             </div>
 
-                                            {/* Форма бронирования если есть вакансии */}
                                             {missing.length > 0 && (
                                                 <div className="bg-black/30 p-4 rounded-2xl border border-brand-accent/20">
                                                     <h4 className="text-xs font-bold text-brand-accent uppercase tracking-tighter mb-3">Записаться на смену</h4>
