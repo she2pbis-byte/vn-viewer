@@ -63,7 +63,6 @@
             object-fit: contain;
             padding: 6px;
         }
-        /* Инвертируем иконки, чтобы они были темными на светлом фоне #FFEED2 */
         .role-icon-dark {
             filter: brightness(0.2);
         }
@@ -261,15 +260,19 @@
                                     return (
                                         <div key={event.id || idx} className="bg-brand-card rounded-2xl border border-white/10 overflow-hidden shadow-2xl fade-in" style={{animationDelay: `${idx * 0.1}s`}}>
                                             <div className="p-5">
-                                                <div className="flex items-center gap-2 text-brand-accent text-[11px] font-bold uppercase mb-2 tracking-wider">
-                                                    <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-md">
-                                                        {renderIcon('Calendar', 12, "text-brand-accent")}
-                                                        <span>{formatDate(event.date)}</span>
+                                                {/* Заголовок карточки: Дата, Время и Название */}
+                                                <div className="mb-4 space-y-1">
+                                                    <div className="flex items-baseline gap-2 text-brand-accent font-bold text-xl leading-tight">
+                                                        <span className="shrink-0">{formatDate(event.date)}</span>
+                                                        {event.start && (
+                                                            <>
+                                                                <span className="text-white/40 font-light">|</span>
+                                                                <span className="text-white/90">{event.start}</span>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                    {event.start && <span className="text-white/60 font-medium">/ {event.start}</span>}
+                                                    <h2 className="text-xl font-bold text-brand-accent leading-tight">{event.name}</h2>
                                                 </div>
-                                                
-                                                <h2 className="text-xl font-bold mb-3 text-brand-accent leading-tight">{event.name}</h2>
                                                 
                                                 <div className="flex items-center gap-2 text-white/80 text-sm mb-5 bg-black/20 p-2 rounded-lg inline-flex max-w-full">
                                                     {renderIcon('MapPin', 14, "shrink-0 text-white/60")}
