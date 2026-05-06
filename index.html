@@ -81,7 +81,6 @@
             opacity: 1;
         }
 
-        /* Улучшенная анимация: более яркие цвета и сильное свечение */
         @keyframes pulse-red-border {
             0% { 
                 border-color: rgba(255, 0, 0, 0.4); 
@@ -115,6 +114,7 @@
             const [error, setError] = useState(null);
             const [lastUpdated, setLastUpdated] = useState(null);
             const [expandedEventId, setExpandedEventId] = useState(null);
+            const [filter, setFilter] = useState('ALL'); // 'ALL' или 'VACANCY'
 
             const Icons = useMemo(() => {
                 const lucide = window.LucideReact || window.lucideReact || {};
@@ -214,6 +214,10 @@
                         const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
                         return totalNeeded > 0;
                     })
+                    .map(event => ({
+                        ...event,
+                        _hasUrgent: getMissingStaff(event).some(m => m.roleKey === 'оф' || m.roleKey === 'бар')
+                    }))
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 setEvents(processedEvents);
@@ -246,10 +250,17 @@
                 return () => clearInterval(intervalId);
             }, [REFRESH_INTERVAL]);
 
+            const filteredEvents = useMemo(() => {
+                if (filter === 'VACANCY') {
+                    return events.filter(e => e._hasUrgent);
+                }
+                return events;
+            }, [events, filter]);
+
             return (
                 <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
                     <div className="max-w-2xl mx-auto">
-                        <header className="mb-6 flex items-center justify-between border-b border-white/20 pb-4">
+                        <header className="mb-4 flex items-center justify-between border-b border-white/20 pb-4">
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Мероприятия</h1>
                                 <div className="flex flex-col gap-1">
@@ -276,6 +287,22 @@
                             </button>
                         </header>
 
+                        {/* Фильтры */}
+                        <div className="mb-6 flex gap-2">
+                            <button 
+                                onClick={() => setFilter('ALL')}
+                                className={`flex-1 py-2.5 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-transparent text-white/60 border-white/20'}`}
+                            >
+                                Все
+                            </button>
+                            <button 
+                                onClick={() => setFilter('VACANCY')}
+                                className={`flex-1 py-2.5 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-transparent text-white/60 border-white/20'}`}
+                            >
+                                Есть вакансия
+                            </button>
+                        </div>
+
                         {error && !loading && (
                             <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">
                                 {renderIcon('Info', 14, "text-brand-accent")} {error}
@@ -289,14 +316,17 @@
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {events.map((event, idx) => {
+                                {filteredEvents.length === 0 && !loading && (
+                                    <div className="py-20 text-center opacity-40">
+                                        <p className="text-sm font-bold uppercase tracking-widest">Нет подходящих мероприятий</p>
+                                    </div>
+                                )}
+                                {filteredEvents.map((event, idx) => {
                                     const eventId = event.id || `event-${idx}`;
                                     const isExpanded = expandedEventId === eventId;
                                     const missing = getMissingStaff(event);
                                     
-                                    const hasUrgentVacancies = missing.some(m => 
-                                        m.roleKey === 'оф' || m.roleKey === 'бар'
-                                    );
+                                    const hasUrgentVacancies = event._hasUrgent;
 
                                     const allStaff = [...(event.staff || []), ...missing];
                                     const timeDisplay = event.start ? (
@@ -308,7 +338,7 @@
                                             key={eventId} 
                                             onClick={() => toggleExpand(eventId)}
                                             className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} 
-                                            style={{animationDelay: `${idx * 0.1}s`}}
+                                            style={{animationDelay: `${idx * 0.05}s`}}
                                         >
                                             <div className="p-5 flex items-center justify-between">
                                                 <div className="space-y-1 overflow-hidden pr-4">
