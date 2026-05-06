@@ -49,6 +49,9 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1F1713; }
         ::-webkit-scrollbar-thumb { background: #FFFFFF; border-radius: 10px; }
+        
+        .rotate-anim { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -124,16 +127,11 @@
                 const processedEvents = rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
-                        
-                        // 1. Фильтр по дате (только будущие и сегодня)
                         const eventDate = new Date(event.date);
                         if (eventDate < today) return false;
-
-                        // 2. Фильтр по количеству нужных ролей (если все 0 — скрываем)
                         const needed = event.neededStaff || {};
                         const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
                         if (totalNeeded === 0) return false;
-
                         return true;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -167,12 +165,21 @@
                                 <h1 className="text-2xl font-bold tracking-tight text-white">Мероприятия</h1>
                                 <span className="text-[10px] text-white/60 uppercase tracking-widest font-bold">Monitoring System</span>
                             </div>
-                            <button 
-                                onClick={fetchEvents} 
-                                className={`p-2.5 rounded-full bg-brand-card hover:bg-white/10 text-white active:scale-95 transition-all ${loading ? 'animate-spin' : ''}`}
+                            {/* Логотип вместо кнопки, нажатие на него также обновляет данные */}
+                            <div 
+                                onClick={fetchEvents}
+                                className={`relative w-12 h-12 rounded-full bg-brand-card flex items-center justify-center border-2 border-white/10 overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'}`}
                             >
-                                {renderIcon(Icons.RefreshCw, 18)}
-                            </button>
+                                <img 
+                                    src="catering-b.ico" 
+                                    alt="Logo" 
+                                    className={`w-8 h-8 object-contain ${loading ? 'rotate-anim' : ''}`}
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.parentElement.innerHTML = '<div class="text-xs font-bold">CB</div>';
+                                    }}
+                                />
+                            </div>
                         </header>
 
                         {error && (
@@ -205,38 +212,41 @@
                                             </div>
 
                                             <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                {allStaff.map((person, pIdx) => (
-                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-brand-card border-dashed border-white/30' : 'bg-black/20 border-white/5 hover:bg-black/40'}`}>
-                                                        <div className="flex items-center gap-3 overflow-hidden">
-                                                            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-white/5 border-white/20 text-white/40' : 'bg-brand-card border-white/30 text-white'}`}>
-                                                                {person.isPlaceholder 
-                                                                    ? getRoleIcon(person.roleKey, 18) 
-                                                                    : renderIcon(Icons.Contact, 20)
-                                                                }
-                                                            </div>
-                                                            
-                                                            <div className="overflow-hidden">
-                                                                <div className={`text-[13px] font-semibold truncate text-white`}>
-                                                                    {person.isPlaceholder ? 'Требуется' : person.name}
+                                                {allStaff.map((person, pIdx) => {
+                                                    // Определяем роль для выбора иконки у существующих сотрудников
+                                                    const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
+                                                    
+                                                    return (
+                                                        <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-brand-card border-dashed border-white/30' : 'bg-black/20 border-white/5 hover:bg-black/40'}`}>
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                {/* Иконка роли теперь отображается для всех */}
+                                                                <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-white/5 border-white/20 text-white/40' : 'bg-brand-card border-white/30 text-white'}`}>
+                                                                    {getRoleIcon(currentRole, 18)}
                                                                 </div>
-                                                                <div className="text-[10px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
-                                                                    {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
+                                                                
+                                                                <div className="overflow-hidden">
+                                                                    <div className={`text-[13px] font-semibold truncate text-white`}>
+                                                                        {person.isPlaceholder ? 'Требуется' : person.name}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
+                                                                        {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
 
-                                                        {!person.isPlaceholder ? (
-                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-black/20 rounded-lg border border-white/10 shrink-0">
-                                                                {renderIcon(Icons.Clock, 12, "text-white/70")}
-                                                                <span className="text-xs font-mono font-bold text-white">{person.time || '--:--'}</span>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="p-2 text-white/30">
-                                                                {renderIcon(Icons.UserPlus, 16)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                                            {!person.isPlaceholder ? (
+                                                                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-black/20 rounded-lg border border-white/10 shrink-0">
+                                                                    {renderIcon(Icons.Clock, 12, "text-white/70")}
+                                                                    <span className="text-xs font-mono font-bold text-white">{person.time || '--:--'}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="p-2 text-white/30">
+                                                                    {renderIcon(Icons.UserPlus, 16)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
