@@ -469,7 +469,7 @@
                                             style={{animationDelay: `${idx * 0.05}s`}}
                                         >
                                             <div className="p-5 flex items-center justify-between">
-                                                <div className="space-y-1 overflow-hidden pr-4">
+                                                <div className="space-y-1 overflow-hidden">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && (
@@ -483,9 +483,7 @@
                                                         {event.name}
                                                     </h2>
                                                 </div>
-                                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                    {renderIcon('ChevronDown', 24, "text-brand-accent")}
-                                                </div>
+                                                {/* Иконка шеврона удалена для более чистого вида */}
                                             </div>
 
                                             <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
