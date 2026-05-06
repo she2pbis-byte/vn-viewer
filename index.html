@@ -387,20 +387,22 @@
                                             setStaffSearch('');
                                             setShowAutocomplete(false);
                                         }}
-                                        className="absolute inset-y-0 right-2 flex items-center justify-center p-1 group transition-all"
+                                        className="absolute inset-y-0 right-3 flex items-center justify-center transition-all active:scale-75 group"
                                     >
-                                        <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                                            <img 
-                                                src="close.png" 
-                                                alt="Clear" 
-                                                className="w-full h-full object-contain active:scale-90 transition-transform"
-                                                onError={(e) => {
-                                                    // Fallback если файл не найден
-                                                    e.target.style.display = 'none';
-                                                    e.target.parentElement.innerHTML = '<div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">X</div>';
-                                                }}
-                                            />
-                                        </div>
+                                        <svg 
+                                            width="20" 
+                                            height="20" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none" 
+                                            stroke="#FF0000" 
+                                            strokeWidth="3" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                            className="drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]"
+                                        >
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
                                     </button>
                                 )}
                             </div>
