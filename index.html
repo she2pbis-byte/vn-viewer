@@ -7,8 +7,8 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
@@ -16,20 +16,20 @@
     <script src="https://unpkg.com/lucide-react@latest"></script>
 
     <style>
-        body { background-color: #14161a; }
-        /* Кастомный шрифт или дополнительные стили можно добавить тут */
+        body { background-color: #14161a; margin: 0; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // Деструктуризируем хуки и иконки
         const { useState, useEffect } = React;
+        
+        // В браузере иконки лежат в lucideReact
         const { 
             Calendar, MapPin, Clock, Upload, Info, UtensilsCrossed, 
             GlassWater, ChefHat, Droplets, User, UserPlus, RefreshCw 
-        } = lucide;
+        } = window.lucideReact;
 
         const App = () => {
             const [events, setEvents] = useState([]);
@@ -53,37 +53,28 @@
                 try {
                     const date = new Date(dateStr);
                     if (isNaN(date.getTime())) return dateStr;
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    return `${day}.${month}`;
-                } catch (e) {
-                    return dateStr;
-                }
+                    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                } catch (e) { return dateStr; }
             };
 
             const getMissingStaff = (event) => {
                 const needed = event.neededStaff || {};
                 const currentStaff = event.staff || [];
                 const missing = [];
-                const roleMapping = {
-                    'оф': 'Официант',
-                    'бар': 'Бармен',
-                    'пов': 'Повар',
-                    'мой': 'Мойщица'
-                };
+                const roleMapping = { 'оф': 'Официант', 'бар': 'Бармен', 'пов': 'Повар', 'мой': 'Мойщица' };
 
                 Object.entries(roleMapping).forEach(([key, label]) => {
                     const countNeeded = parseInt(needed[key]) || 0;
                     const countCurrent = currentStaff.filter(p => 
                         (p.rolesDisplay || '').toLowerCase().includes(label.toLowerCase()) ||
-                        (p.roles || []).some(r => r.toLowerCase().includes(label.toLowerCase()))
+                        (p.roles || []).some(r => String(r).toLowerCase().includes(label.toLowerCase()))
                     ).length;
 
                     const diff = countNeeded - countCurrent;
                     if (diff > 0) {
                         for (let i = 0; i < diff; i++) {
                             missing.push({
-                                id: `missing-${key}-${i}-${event.id}`,
+                                id: `missing-${key}-${i}-${event.id || Math.random()}`,
                                 isPlaceholder: true,
                                 roleLabel: label,
                                 roleKey: key
@@ -95,30 +86,21 @@
             };
 
             const processAndSetEvents = (data) => {
+                if (!data) return;
                 const rawEvents = Array.isArray(data) ? data : [data];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
                 const processedEvents = rawEvents
                     .filter(event => {
-                        if (!event.date) return false;
+                        if (!event || !event.date) return false;
                         const eventDate = new Date(event.date);
-                        if (eventDate < today) return false;
-
-                        const ns = event.neededStaff || {};
-                        return Object.values(ns).some(value => {
-                            const num = parseInt(value);
-                            return !isNaN(num) && num > 0;
-                        });
+                        return eventDate >= today;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                if (processedEvents.length === 0 && rawEvents.length > 0) {
-                    setError("Нет актуальных мероприятий.");
-                } else {
-                    setError(null);
-                }
                 setEvents(processedEvents);
+                if (processedEvents.length === 0) setError("Актуальных мероприятий не найдено.");
             };
 
             const fetchEvents = async () => {
@@ -126,19 +108,17 @@
                 setError(null);
                 try {
                     const response = await fetch(DATA_URL);
-                    if (!response.ok) throw new Error("Не удалось загрузить данные");
+                    if (!response.ok) throw new Error("GitHub вернул ошибку " + response.status);
                     const data = await response.json();
                     processAndSetEvents(data);
                 } catch (err) {
-                    setError("Ошибка авто-загрузки: " + err.message);
+                    setError("Не удалось загрузить данные из сети. Используйте ручную загрузку.");
                 } finally {
                     setLoading(false);
                 }
             };
 
-            useEffect(() => {
-                fetchEvents();
-            }, []);
+            useEffect(() => { fetchEvents(); }, []);
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -147,8 +127,9 @@
                 reader.onload = (event) => {
                     try {
                         processAndSetEvents(JSON.parse(event.target.result));
+                        setError(null);
                     } catch (err) {
-                        setError("Неверный формат JSON.");
+                        setError("Ошибка: Файл не является валидным JSON.");
                     }
                 };
                 reader.readAsText(file);
@@ -158,123 +139,83 @@
                 <div className="min-h-screen p-4 font-sans text-white antialiased">
                     <div className="max-w-2xl mx-auto">
                         <header className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
-                            <div className="flex flex-col">
-                                <h1 className="text-2xl font-bold tracking-tight">Мероприятия</h1>
-                                <span className="text-[10px] text-[#8a8d91] uppercase tracking-widest mt-1">v. GitHub Auto-Sync</span>
+                            <div>
+                                <h1 className="text-2xl font-bold">Мероприятия</h1>
+                                <span className="text-[10px] text-[#8a8d91] uppercase tracking-widest">v. GitHub Auto-Sync</span>
                             </div>
-                            <div className="flex gap-4 items-center">
-                                <button 
-                                    onClick={fetchEvents}
-                                    disabled={loading}
-                                    className={`p-2 rounded-full transition-all ${loading ? 'animate-spin opacity-50' : 'hover:bg-white/5 text-[#c29b61]'}`}
-                                >
+                            <div className="flex gap-4">
+                                <button onClick={fetchEvents} className={`p-2 rounded-full hover:bg-white/5 text-[#c29b61] ${loading ? 'animate-spin' : ''}`}>
                                     <RefreshCw size={18} />
                                 </button>
-                                {events.length > 0 && (
-                                    <button 
-                                        onClick={() => setEvents([])}
-                                        className="text-xs uppercase tracking-widest text-[#c29b61] font-bold"
-                                    >
-                                        Сбросить
-                                    </button>
-                                )}
                             </div>
                         </header>
 
-                        {loading && events.length === 0 && (
-                            <div className="py-20 text-center">
-                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-[#c29b61] border-t-transparent mb-4"></div>
-                                <p className="text-[#8a8d91] text-sm uppercase tracking-widest">Загрузка...</p>
+                        {error && (
+                            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                                <Info size={14} /> {error}
                             </div>
                         )}
 
                         {events.length === 0 && !loading && (
                             <div 
-                                className={`relative border border-dashed rounded-2xl p-12 text-center transition-all ${
-                                    dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'
-                                }`}
+                                className={`border border-dashed rounded-2xl p-10 text-center ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
                                 onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                                 onDragLeave={() => setDragActive(false)}
                                 onDrop={(e) => {
-                                    e.preventDefault();
-                                    setDragActive(false);
-                                    if (e.dataTransfer.files[0]) {
-                                        const reader = new FileReader();
-                                        reader.onload = (ev) => processAndSetEvents(JSON.parse(ev.target.result));
-                                        reader.readAsText(e.dataTransfer.files[0]);
-                                    }
+                                    e.preventDefault(); setDragActive(false);
+                                    if (e.dataTransfer.files[0]) handleFileUpload({target: {files: e.dataTransfer.files}});
                                 }}
                             >
                                 <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                                 <Upload className="mx-auto mb-4 text-[#c29b61]" size={32} />
-                                <p className="text-lg font-medium">Загрузите JSON или обновите</p>
-                            </div>
-                        )}
-
-                        {error && (
-                            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm flex items-center gap-2">
-                                <Info size={16} /> {error}
+                                <p className="text-sm">Загрузите JSON или перетащите файл</p>
                             </div>
                         )}
 
                         <div className="space-y-4">
                             {events.map((event, idx) => {
-                                const missingStaff = getMissingStaff(event);
-                                const combinedStaff = [...(event.staff || []), ...missingStaff];
+                                const missing = getMissingStaff(event);
+                                const allStaff = [...(event.staff || []), ...missing];
 
                                 return (
-                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden shadow-sm">
+                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden">
                                         <div className="p-5">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-2 text-[#c29b61] text-xs font-bold uppercase tracking-wider mb-1">
-                                                        <Calendar size={14} />
-                                                        <span>{formatDate(event.date)}</span>
-                                                        {event.start && <span className="text-[#8a8d91]">| {event.start}</span>}
-                                                    </div>
-                                                    <h2 className="text-xl font-bold leading-tight">{event.name}</h2>
-                                                </div>
+                                            <div className="flex items-center gap-2 text-[#c29b61] text-xs font-bold uppercase mb-1">
+                                                <Calendar size={14} />
+                                                <span>{formatDate(event.date)}</span>
+                                                {event.start && <span className="text-[#8a8d91]">| {event.start}</span>}
                                             </div>
-
-                                            <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-5">
-                                                <MapPin size={14} className="text-[#c29b61]/60" />
+                                            <h2 className="text-xl font-bold mb-3">{event.name}</h2>
+                                            
+                                            <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-4">
+                                                <MapPin size={14} />
                                                 <span className="truncate">{event.location}</span>
                                             </div>
 
                                             <div className="space-y-2 border-t border-white/5 pt-4">
-                                                {combinedStaff.map((person, pIdx) => (
-                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-2.5 rounded-xl border ${person.isPlaceholder ? 'bg-[#14161a]/40 border-dashed border-[#c29b61]/20 opacity-80' : 'bg-[#14161a] border-white/[0.03]'}`}>
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-[#1c1f24] text-[#8a8d91] border-dashed border-[#8a8d91]/30' : 'bg-[#1c1f24] text-[#c29b61] border-[#c29b61]/10'}`}>
-                                                                {person.isPlaceholder ? getRoleIcon(person.roleKey, 18) : getRoleIcon(person.rolesDisplay || (person.roles && person.roles[0]) || '', 20)}
+                                                {allStaff.map((person, pIdx) => (
+                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-2 rounded-xl border ${person.isPlaceholder ? 'bg-[#14161a]/40 border-dashed border-[#c29b61]/20 opacity-70' : 'bg-[#14161a] border-white/[0.03]'}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-full bg-[#1c1f24] flex items-center justify-center text-[#c29b61] border border-white/5">
+                                                                {person.isPlaceholder ? getRoleIcon(person.roleKey, 16) : getRoleIcon(person.rolesDisplay || (person.roles?.[0]), 18)}
                                                             </div>
                                                             <div>
                                                                 <div className={`text-sm font-bold ${person.isPlaceholder ? 'text-[#c29b61]' : 'text-white'}`}>
                                                                     {person.isPlaceholder ? 'Нужен сотрудник' : person.name}
                                                                 </div>
-                                                                <div className="text-[11px] text-[#8a8d91] uppercase tracking-wide">
-                                                                    {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || (person.roles && person.roles[0]))}
-                                                                </div>
+                                                                <div className="text-[10px] text-[#8a8d91] uppercase">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
                                                             </div>
                                                         </div>
-                                                        {!person.isPlaceholder ? (
-                                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#1c1f24] rounded-lg">
+                                                        {!person.isPlaceholder && (
+                                                            <div className="flex items-center gap-2 px-2 py-1 bg-[#1c1f24] rounded-lg border border-white/5">
                                                                 <Clock size={12} className="text-[#c29b61]" />
-                                                                <span className="text-sm font-mono font-bold text-[#c29b61]">{person.time || '--:--'}</span>
+                                                                <span className="text-xs font-mono text-[#c29b61]">{person.time || '--:--'}</span>
                                                             </div>
-                                                        ) : (
-                                                            <div className="px-3 py-1.5"><UserPlus size={14} className="text-[#c29b61]/40" /></div>
                                                         )}
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                        {(event.admin || event.guests) && (
-                                            <div className="px-5 py-3 bg-black/10 border-t border-white/5 flex gap-5 text-[11px] font-bold uppercase tracking-widest text-[#8a8d91]">
-                                                {event.admin && <span>Админ: <span className="text-white">{event.admin}</span></span>}
-                                                {event.guests && <span>Гости: <span className="text-white">{event.guests}</span></span>}
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
