@@ -101,13 +101,21 @@
                 const processedEvents = rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
+                        
+                        // 1. Проверка даты (будущие или сегодня)
                         const eventDate = new Date(event.date);
-                        return eventDate >= today;
+                        const isFuture = eventDate >= today;
+
+                        // 2. Проверка наличия нужных сотрудников (хотя бы один > 0)
+                        const needed = event.neededStaff || {};
+                        const hasNeededStaff = Object.values(needed).some(count => parseInt(count) > 0);
+
+                        return isFuture && hasNeededStaff;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 setEvents(processedEvents);
-                if (processedEvents.length === 0) setError("Актуальных мероприятий не найдено.");
+                if (processedEvents.length === 0) setError("Актуальных мероприятий с потребностью в персонале не найдено.");
             };
 
             const fetchEvents = async () => {
