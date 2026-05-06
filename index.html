@@ -4,95 +4,260 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Кейтеринг ВН</title>
+    
     <link rel="icon" href="catering-b.ico" type="image/x-icon">
+    
     <meta name="theme-color" content="#1F1713">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: { dark: '#1F1713', card: '#604539', accent: '#FFEED2', light: '#FFFFFF' }
+                        brand: {
+                            dark: '#1F1713',    
+                            card: '#604539',    
+                            accent: '#FFEED2',
+                            light: '#FFFFFF',
+                        }
                     }
                 }
             }
         }
     </script>
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/lucide-react@latest"></script>
+
     <style>
-        body { background-color: #1F1713; margin: 0; color: #FFFFFF; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        body { 
+            background-color: #1F1713; 
+            margin: 0; 
+            color: #FFFFFF; 
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        #root { min-height: 100vh; }
         .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1F1713; }
+        ::-webkit-scrollbar-thumb { background: #FFEED2; border-radius: 10px; }
+        
         .rotate-anim { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .content-transition { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.3s ease-in; }
-        .content-transition.expanded { max-height: 3000px; opacity: 1; }
-        .urgent-vacancy-border { animation: pulse-red 1.5s infinite ease-in-out; border: 3px solid #ef4444 !important; }
-        @keyframes pulse-red { 0%, 100% { border-color: rgba(239, 68, 68, 0.4); } 50% { border-color: rgba(239, 68, 68, 1); } }
-        .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 50; background: #2D221C; border: 2px solid #FFEED2; border-top: none; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; max-height: 250px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        .role-icon-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 6px;
+        }
+        .role-icon-dark {
+            filter: brightness(0.2);
+        }
+        .grayscale-img {
+            filter: grayscale(1) opacity(0.3);
+        }
+
+        .content-transition {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, opacity 0.3s ease-in;
+        }
+        .content-transition.expanded {
+            max-height: 2500px;
+            opacity: 1;
+        }
+
+        @keyframes pulse-red-border {
+            0% { 
+                border-color: rgba(255, 0, 0, 0.4); 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+            }
+            50% { 
+                border-color: rgba(255, 0, 0, 1); 
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.3);
+            }
+            100% { 
+                border-color: rgba(255, 0, 0, 0.4); 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+            }
+        }
+        .urgent-vacancy-border {
+            animation: pulse-red-border 1.5s infinite ease-in-out;
+            border: 4px solid red !important;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: #2D221C;
+            border: 2px solid #FFEED2;
+            border-top: none;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            margin-top: -2px;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-        const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ"; 
-        const TG_CHAT_ID = "7016844853"; 
-
         const App = () => {
             const [events, setEvents] = useState([]);
-            const [staffDb, setStaffDb] = useState([]);
             const [loading, setLoading] = useState(false);
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
+            const [lastUpdated, setLastUpdated] = useState(null);
             const [expandedEventId, setExpandedEventId] = useState(null);
             const [filter, setFilter] = useState('ALL');
+            
             const [staffSearch, setStaffSearch] = useState('');
             const [showAutocomplete, setShowAutocomplete] = useState(false);
-            
-            const [bookingName, setBookingName] = useState('');
-            const [bookingPhone, setBookingPhone] = useState('');
-            const [isSubmitting, setIsSubmitting] = useState(false);
+            const autocompleteRef = useRef(null);
 
-            const Icons = useMemo(() => window.LucideReact || {}, []);
+            const Icons = useMemo(() => {
+                const lucide = window.LucideReact || window.lucideReact || {};
+                return lucide.icons || lucide;
+            }, []);
+
             const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
-            const STAFF_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
+            const REFRESH_INTERVAL = 10 * 60 * 1000;
 
-            const renderIcon = (name, size = 18, className = "") => {
-                const Icon = Icons[name];
-                return Icon ? <Icon size={size} className={className} /> : null;
+            const renderIcon = (iconName, size = 18, className = "text-white") => {
+                const IconComponent = Icons[iconName];
+                if (!IconComponent) {
+                    return <div style={{width: size, height: size}} className="bg-white/10 rounded-full" />;
+                }
+                return <IconComponent size={size} className={className} />;
+            };
+
+            const toggleExpand = (id) => {
+                setExpandedEventId(prev => prev === id ? null : id);
+            };
+
+            const getRoleIcon = (roleName, isPlaceholder = false) => {
+                const roleStr = String(roleName || '').toLowerCase();
+                let src = '';
+                
+                if (roleStr.includes('официант') || roleStr === 'оф') src = 'waiter.png';
+                else if (roleStr.includes('бармен') || roleStr === 'бар') src = 'bar.png';
+                else if (roleStr.includes('повар') || roleStr === 'пов') src = 'cook.png';
+                else if (roleStr.includes('мой') || roleStr === 'мойка' || roleStr.includes('чист')) src = 'clean.png';
+
+                if (src) {
+                    return (
+                        <img 
+                            src={src} 
+                            alt={roleName} 
+                            className={`role-icon-img ${isPlaceholder ? 'grayscale-img' : 'role-icon-dark'}`}
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = `<div class="text-[9px] font-bold text-brand-dark/50">${roleName.substring(0,2).toUpperCase()}</div>`;
+                            }}
+                        />
+                    );
+                }
+
+                return renderIcon('User', 20, isPlaceholder ? "text-brand-dark/30" : "text-brand-dark");
             };
 
             const formatDate = (dateStr) => {
-                if (!dateStr) return "";
-                const [year, month, day] = dateStr.split("-");
-                return `${day}.${month}.${year}`;
+                if (!dateStr) return '—';
+                try {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                } catch (e) { return dateStr; }
             };
 
-            const fetchData = async (silent = false) => {
+            const getMissingStaff = (event) => {
+                const needed = event.neededStaff || {};
+                const currentStaff = event.staff || [];
+                const missing = [];
+                const roleMapping = { 'оф': 'Официант', 'бар': 'Бармен', 'пов': 'Повар', 'мой': 'Мойщица' };
+
+                Object.entries(roleMapping).forEach(([key, label]) => {
+                    const countNeeded = parseInt(needed[key]) || 0;
+                    const countCurrent = currentStaff.filter(p => 
+                        (p.rolesDisplay || '').toLowerCase().includes(label.toLowerCase()) ||
+                        (p.roles || []).some(r => String(r).toLowerCase().includes(label.toLowerCase()))
+                    ).length;
+
+                    const diff = countNeeded - countCurrent;
+                    if (diff > 0) {
+                        for (let i = 0; i < diff; i++) {
+                            missing.push({
+                                id: `missing-${key}-${i}-${event.id || Math.random()}`,
+                                isPlaceholder: true,
+                                roleLabel: label,
+                                roleKey: key
+                            });
+                        }
+                    }
+                });
+                return missing;
+            };
+
+            const processAndSetEvents = useCallback((data) => {
+                if (!data) return;
+                const rawEvents = Array.isArray(data) ? data : [data];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const processedEvents = rawEvents
+                    .filter(event => {
+                        if (!event || !event.date) return false;
+                        const eventDate = new Date(event.date);
+                        if (eventDate < today) return false;
+                        
+                        const needed = event.neededStaff || {};
+                        const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+                        const hasCurrentStaff = event.staff && event.staff.length > 0;
+                        return totalNeeded > 0 || hasCurrentStaff;
+                    })
+                    .map(event => ({
+                        ...event,
+                        _hasUrgent: getMissingStaff(event).some(m => m.roleKey === 'оф' || m.roleKey === 'бар')
+                    }))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                setEvents(processedEvents);
+                setLastUpdated(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                if (processedEvents.length === 0) setError("Актуальных вакансий не найдено.");
+                else setError(null);
+            }, []);
+
+            const fetchEvents = async (silent = false) => {
                 if (!silent) setLoading(true);
                 try {
-                    const [evRes, stRes] = await Promise.all([
-                        fetch(`${DATA_URL}?t=${Date.now()}`),
-                        fetch(`${STAFF_URL}?t=${Date.now()}`).catch(() => null)
-                    ]);
-                    
-                    if (evRes.ok) {
-                        const data = await evRes.json();
-                        setEvents(Array.isArray(data) ? data : [data]);
-                    }
-                    if (stRes && stRes.ok) {
-                        const sData = await stRes.json();
-                        setStaffDb(sData);
-                    }
+                    const response = await fetch(`${DATA_URL}?t=${Date.now()}`);
+                    if (!response.ok) throw new Error("Ошибка при получении данных");
+                    const data = await response.json();
+                    processAndSetEvents(data);
                 } catch (err) {
-                    setError("Ошибка загрузки");
+                    console.error(err);
+                    if (!silent) setError("Не удалось загрузить список мероприятий.");
                 } finally {
                     setLoading(false);
                     setIsInitialLoad(false);
@@ -100,188 +265,289 @@
             };
 
             useEffect(() => {
-                fetchData();
-            }, []);
+                fetchEvents();
+                const intervalId = setInterval(() => {
+                    fetchEvents(true);
+                }, REFRESH_INTERVAL);
 
-            const getMissingStaff = (event) => {
-                const needed = event.neededStaff || {};
-                const current = event.staff || [];
-                const roles = { 'оф': 'Официант', 'бар': 'Бармен', 'пов': 'Повар', 'мой': 'Мойщица' };
-                let missing = [];
-                Object.entries(roles).forEach(([key, label]) => {
-                    const countNeeded = parseInt(needed[key]) || 0;
-                    const countCurrent = current.filter(p => (p.rolesDisplay || '').includes(label)).length;
-                    for(let i=0; i < (countNeeded - countCurrent); i++) {
-                        missing.push({ roleKey: key, roleLabel: label, id: `m-${key}-${i}` });
+                const handleClickOutside = (event) => {
+                    if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
+                        setShowAutocomplete(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+
+                return () => {
+                    clearInterval(intervalId);
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
+            }, [REFRESH_INTERVAL]);
+
+            const allStaffNames = useMemo(() => {
+                const names = new Set();
+                events.forEach(event => {
+                    if (event.staff) {
+                        event.staff.forEach(person => {
+                            if (person.name) names.add(person.name);
+                        });
                     }
                 });
-                return missing;
-            };
+                return Array.from(names).sort();
+            }, [events]);
 
-            const validatePhone = (phone) => {
-                return /^(\+7|8|7)[\s\-]?\(?[489][0-9]{2}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/.test(phone);
-            };
+            const filteredAutocompleteNames = useMemo(() => {
+                if (!staffSearch || staffSearch.length < 1) return [];
+                const searchLower = staffSearch.toLowerCase();
+                return allStaffNames.filter(name => 
+                    name.toLowerCase().includes(searchLower)
+                ).slice(0, 10);
+            }, [allStaffNames, staffSearch]);
 
-            const sendTelegram = async (eventName, eventDate, role) => {
-                const text = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 *Событие:* ${eventName} (${formatDate(eventDate)})\n👤 *Имя:* ${bookingName}\n📞 *Тел:* ${bookingPhone}\n🛠 *Роль:* ${role}`;
-                try {
-                    const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: text, parse_mode: 'Markdown' })
-                    });
-                    return res.ok;
-                } catch { return false; }
-            };
-
-            const handleApply = async (e, event, role) => {
-                e.stopPropagation();
-                if (!bookingName.trim()) return alert("Введите фамилию");
-                if (!validatePhone(bookingPhone)) return alert("Введите корректный номер телефона");
-                setIsSubmitting(true);
-                const success = await sendTelegram(event.name, event.date, role);
-                setIsSubmitting(false);
-                if (success) alert("Заявка отправлена!");
-                else alert("Ошибка отправки.");
-            };
-
-            // ОСНОВНАЯ ЛОГИКА ФИЛЬТРАЦИИ
             const filteredEvents = useMemo(() => {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
+                let result = events;
+                
+                if (filter === 'VACANCY') {
+                    result = result.filter(e => e._hasUrgent);
+                }
 
-                return events.filter(e => {
-                    // 1. Проверка даты (скрываем прошедшие)
-                    const eventDate = new Date(e.date);
-                    eventDate.setHours(0,0,0,0);
-                    if (eventDate < now) return false;
+                if (staffSearch.trim()) {
+                    const searchLower = staffSearch.toLowerCase().trim();
+                    result = result.filter(e => 
+                        e.staff && e.staff.some(p => p.name && p.name.toLowerCase().includes(searchLower))
+                    );
+                }
 
-                    // 2. Проверка наличия вакансий (официанты, бармены и т.д.)
-                    const missing = getMissingStaff(e);
-                    if (missing.length === 0) return false;
-
-                    // 3. Фильтр поиска по сотруднику (если поиск активен)
-                    const matchesSearch = !staffSearch || e.staff?.some(p => p.name?.toLowerCase().includes(staffSearch.toLowerCase()));
-                    
-                    return matchesSearch;
-                }).sort((a, b) => new Date(a.date) - new Date(b.date));
-            }, [events, staffSearch]);
-
-            const autocompleteNames = useMemo(() => {
-                if (staffSearch.length < 2) return [];
-                return staffDb.filter(s => s.name.toLowerCase().includes(staffSearch.toLowerCase())).slice(0, 5);
-            }, [staffSearch, staffDb]);
+                return result;
+            }, [events, filter, staffSearch]);
 
             return (
-                <div className="max-w-xl mx-auto p-4">
-                    <header className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-brand-accent">Кейтеринг ВН</h1>
-                            <p className="text-xs text-white/50 uppercase tracking-widest font-bold">Свободные смены</p>
-                        </div>
-                        <div className="w-12 h-12 bg-brand-card rounded-full border-2 border-brand-accent flex items-center justify-center overflow-hidden">
-                            <img src="catering-b.ico" className="w-8 h-8 opacity-80" alt="logo" onError={(e) => e.target.style.display='none'} />
-                        </div>
-                    </header>
+                <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
+                    <div className="max-w-2xl mx-auto">
+                        <header className="mb-4 flex items-center justify-between border-b border-white/20 pb-4">
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Кейтеринг ВН</h1>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
+                                    {lastUpdated && (
+                                        <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>
+                                    )}
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => fetchEvents()}
+                                disabled={loading}
+                                className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[4px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}
+                            >
+                                <img 
+                                    src="catering-b.ico" 
+                                    alt="Logo" 
+                                    className={`w-9 h-9 object-contain ${loading ? 'rotate-anim' : ''}`}
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>';
+                                    }}
+                                />
+                            </button>
+                        </header>
 
-                    <div className="relative mb-6">
-                        <div className="absolute left-3 top-3.5 text-white/30">{renderIcon('Search', 18)}</div>
-                        <input 
-                            className="w-full bg-white/5 border-2 border-brand-accent/30 rounded-xl py-3 pl-10 pr-4 text-sm focus:border-brand-accent outline-none transition-all"
-                            placeholder="Найти смену по фамилии..."
-                            value={staffSearch}
-                            onChange={(e) => {setStaffSearch(e.target.value); setShowAutocomplete(true);}}
-                        />
-                        {showAutocomplete && autocompleteNames.length > 0 && (
-                            <div className="autocomplete-dropdown">
-                                {autocompleteNames.map(s => (
-                                    <div key={s.name} className="p-3 hover:bg-brand-accent hover:text-brand-dark cursor-pointer border-b border-white/5"
-                                         onClick={() => {setStaffSearch(s.name); setShowAutocomplete(false);}}>
-                                        {s.name}
-                                    </div>
-                                ))}
+                        <div className="mb-3 flex gap-2">
+                            <button 
+                                onClick={() => setFilter('ALL')}
+                                className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.1)]' : 'bg-white/5 text-white/60 border-white/10'}`}
+                            >
+                                Все
+                            </button>
+                            <button 
+                                onClick={() => setFilter('VACANCY')}
+                                className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-white/5 text-white/60 border-white/10'}`}
+                            >
+                                Есть вакансия
+                            </button>
+                        </div>
+
+                        <div className="mb-6 relative" ref={autocompleteRef}>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-40">
+                                    {renderIcon('Search', 16)}
+                                </div>
+                                <input 
+                                    type="text"
+                                    value={staffSearch}
+                                    onChange={(e) => {
+                                        setStaffSearch(e.target.value);
+                                        setShowAutocomplete(true);
+                                    }}
+                                    onFocus={() => setShowAutocomplete(true)}
+                                    placeholder="введи свою фамилию..."
+                                    className={`w-full bg-white/5 border-[2px] border-brand-accent rounded-xl py-3 pl-11 pr-12 text-[14px] font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 transition-all shadow-[0_0_15px_rgba(255,238,210,0.1)] ${showAutocomplete && filteredAutocompleteNames.length > 0 ? 'rounded-b-none' : ''}`}
+                                />
+                                {staffSearch && (
+                                    <button 
+                                        onClick={() => {
+                                            setStaffSearch('');
+                                            setShowAutocomplete(false);
+                                        }}
+                                        className="absolute inset-y-0 right-3 flex items-center justify-center transition-all active:scale-75 group"
+                                    >
+                                        <svg 
+                                            width="20" 
+                                            height="20" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none" 
+                                            stroke="#FF0000" 
+                                            strokeWidth="3" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                            className="drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]"
+                                        >
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+
+                            {showAutocomplete && filteredAutocompleteNames.length > 0 && (
+                                <div className="autocomplete-dropdown">
+                                    {filteredAutocompleteNames.map((name, i) => (
+                                        <div 
+                                            key={i}
+                                            onClick={() => {
+                                                setStaffSearch(name);
+                                                setShowAutocomplete(false);
+                                            }}
+                                            className="px-4 py-3.5 text-[14px] border-b border-white/5 last:border-0 active:bg-brand-accent active:text-brand-dark transition-colors cursor-pointer flex items-center gap-3"
+                                        >
+                                            <div className="w-7 h-7 rounded-full bg-brand-accent/20 flex items-center justify-center text-[10px] font-bold text-brand-accent border border-brand-accent/30">
+                                                {name.charAt(0)}
+                                            </div>
+                                            <span className="font-medium tracking-tight">{name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {error && !loading && (
+                            <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">
+                                {renderIcon('Info', 14, "text-brand-accent")} {error}
                             </div>
                         )}
-                    </div>
 
-                    <div className="space-y-4">
-                        {loading ? (
-                            <div className="flex justify-center py-10"><div className="rotate-anim">{renderIcon('Loader2', 32)}</div></div>
-                        ) : filteredEvents.length === 0 ? (
-                            <div className="text-center py-10 text-white/30 text-sm">Актуальных вакансий на ближайшее время нет</div>
+                        {isInitialLoad && loading ? (
+                            <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                                <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
+                            </div>
                         ) : (
-                            filteredEvents.map((event, idx) => {
-                                const missing = getMissingStaff(event);
-                                const isExpanded = expandedEventId === event.id;
-                                
-                                return (
-                                    <div key={event.id || idx} 
-                                         onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
-                                         className="bg-brand-card rounded-2xl border border-white/10 transition-all urgent-vacancy-border">
-                                        <div className="p-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="text-brand-accent font-bold text-lg">{formatDate(event.date)} <span className="text-white/40 font-normal ml-2">|</span> <span className="text-white">{event.start}</span></div>
-                                                <span className="bg-red-500 text-[10px] px-2 py-0.5 rounded-full font-bold">НУЖНЫ ЛЮДИ</span>
-                                            </div>
-                                            <h3 className="text-lg font-bold mt-1">{event.name}</h3>
-                                            <p className="text-xs text-white/50 flex items-center gap-1 mt-1">{renderIcon('MapPin', 12)} {event.location}</p>
+                            <div className="space-y-4">
+                                {filteredEvents.length === 0 && !loading && (
+                                    <div className="py-20 text-center opacity-40 flex flex-col items-center gap-3">
+                                        <div className="bg-white/5 p-4 rounded-full">
+                                            {renderIcon('CalendarX2', 32, "text-white/40")}
                                         </div>
+                                        <p className="text-sm font-bold uppercase tracking-widest px-10">
+                                            {staffSearch ? `Для сотрудника "${staffSearch}" мероприятий не найдено` : 'Нет подходящих мероприятий'}
+                                        </p>
+                                    </div>
+                                )}
+                                {filteredEvents.map((event, idx) => {
+                                    const eventId = event.id || `event-${idx}`;
+                                    const isExpanded = expandedEventId === eventId;
+                                    const missing = getMissingStaff(event);
+                                    const hasUrgentVacancies = event._hasUrgent;
+                                    const allStaff = [...(event.staff || []), ...missing];
+                                    const timeDisplay = event.start ? (
+                                        event.end ? `${event.start} – ${event.end}` : event.start
+                                    ) : null;
 
-                                        <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
-                                            <div className="px-4 pb-4 border-t border-white/5 pt-4">
-                                                <div className="space-y-2 mb-6">
-                                                    <p className="text-[10px] text-white/40 uppercase font-bold mb-1">Уже в списке:</p>
-                                                    {event.staff?.map((p, i) => (
-                                                        <div key={i} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center text-brand-dark font-bold text-xs">{p.name?.[0]}</div>
-                                                                <div>
-                                                                    <div className="text-xs font-bold">{p.name}</div>
-                                                                    <div className="text-[10px] text-white/40 uppercase">{p.rolesDisplay}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                    return (
+                                        <div 
+                                            key={eventId} 
+                                            onClick={() => toggleExpand(eventId)}
+                                            className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} 
+                                            style={{animationDelay: `${idx * 0.05}s`}}
+                                        >
+                                            <div className="p-5 flex items-center">
+                                                <div className="space-y-1 w-full">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
+                                                        <span className="shrink-0">{formatDate(event.date)}</span>
+                                                        {timeDisplay && (
+                                                            <>
+                                                                <span className="text-white/40 font-light">|</span>
+                                                                <span className="text-white/90">{timeDisplay}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>
+                                                        {event.name}
+                                                    </h2>
                                                 </div>
+                                            </div>
 
-                                                <div className="bg-black/30 p-4 rounded-2xl border border-brand-accent/20">
-                                                    <h4 className="text-xs font-bold text-brand-accent uppercase tracking-tighter mb-3">Записаться на смену</h4>
-                                                    <div className="space-y-3">
-                                                        <input 
-                                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm outline-none focus:border-brand-accent"
-                                                            placeholder="Твоя Фамилия"
-                                                            value={bookingName}
-                                                            onClick={e => e.stopPropagation()}
-                                                            onChange={e => setBookingName(e.target.value)}
-                                                        />
-                                                        <input 
-                                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm outline-none focus:border-brand-accent"
-                                                            placeholder="Номер телефона (+7...)"
-                                                            type="tel"
-                                                            value={bookingPhone}
-                                                            onClick={e => e.stopPropagation()}
-                                                            onChange={e => setBookingPhone(e.target.value)}
-                                                        />
-                                                        <div className="grid grid-cols-2 gap-2 pt-2">
-                                                            {Array.from(new Set(missing.map(m => m.roleLabel))).map(roleLabel => (
-                                                                <button 
-                                                                    key={roleLabel}
-                                                                    disabled={isSubmitting}
-                                                                    onClick={(e) => handleApply(e, event, roleLabel)}
-                                                                    className="bg-brand-accent text-brand-dark py-3 rounded-xl font-bold text-[11px] uppercase tracking-wider active:scale-95 transition-all shadow-lg"
+                                            <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
+                                                <div className="px-5 pb-6">
+                                                    <div className="flex items-center gap-2 text-white/90 text-[14px] mb-5 bg-black/20 px-3 py-2 rounded-lg inline-flex max-w-full">
+                                                        {renderIcon('MapPin', 15, "shrink-0 text-white/60")}
+                                                        <span className="truncate">{event.location}</span>
+                                                    </div>
+
+                                                    <div className="space-y-2.5 border-t border-white/10 pt-5">
+                                                        <div className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] mb-1">Состав команды</div>
+                                                        {allStaff.map((person, pIdx) => {
+                                                            const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
+                                                            const isSearchedStaff = staffSearch && !person.isPlaceholder && person.name && person.name.toLowerCase().includes(staffSearch.toLowerCase().trim());
+
+                                                            return (
+                                                                <div 
+                                                                    key={person.id || pIdx} 
+                                                                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                                                                        isSearchedStaff 
+                                                                        ? 'bg-brand-accent/20 border-brand-accent shadow-[inset_0_0_10px_rgba(255,238,210,0.1)]' 
+                                                                        : person.isPlaceholder 
+                                                                            ? 'bg-white/5 border-dashed border-white/20' 
+                                                                            : 'bg-black/20 border-white/5'
+                                                                    }`}
                                                                 >
-                                                                    {isSubmitting ? '...' : `МОГУ (${roleLabel})`}
-                                                                </button>
-                                                            ))}
-                                                        </div>
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <div className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden">
+                                                                            {getRoleIcon(currentRole, person.isPlaceholder)}
+                                                                        </div>
+                                                                        
+                                                                        <div className="overflow-hidden">
+                                                                            <div className={`text-[14px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : isSearchedStaff ? 'text-brand-accent font-bold' : 'text-white'}`}>
+                                                                                {person.isPlaceholder ? 'Вакансия открыта' : person.name}
+                                                                            </div>
+                                                                            <div className="text-[11px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">
+                                                                                {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {!person.isPlaceholder ? (
+                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
+                                                                            {renderIcon('Clock', 13, isSearchedStaff ? "text-brand-dark/70" : "text-white/70")}
+                                                                            <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="p-1.5 text-white/20 animate-pulse">
+                                                                            {renderIcon('UserPlus', 18, "text-white/40")}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })
+                                    );
+                                })}
+                            </div>
                         )}
+                    </div>
+                    <div className="h-20 flex items-center justify-center opacity-20">
+                        <span className="text-[10px] font-bold tracking-widest uppercase">VN Event Management System</span>
                     </div>
                 </div>
             );
