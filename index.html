@@ -5,35 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мероприятия — Мониторинг</title>
     
-    <!-- Фавикон -->
     <link rel="icon" href="catering-b.ico" type="image/x-icon">
     
-    <!-- Окрашивание статус-бара -->
-    <meta name="theme-color" content="#14161a">
+    <meta name="theme-color" content="#1F1713">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#1F1713',    // Самый темный с фото
+                            card: '#604539',    // Коричневый с фото
+                            accent: '#C7886B',  // Терракотовый с фото
+                            light: '#FFECD2',   // Бежевый с фото
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/lucide-react@latest"></script>
 
     <style>
         body { 
-            background-color: #14161a; 
+            background-color: #1F1713; 
             margin: 0; 
-            color: white; 
+            color: #FFECD2; 
             -webkit-tap-highlight-color: transparent;
         }
         #root { min-height: 100vh; }
-        
-        /* Плавные переходы для интерактивных элементов */
         .transition-all { transition: all 0.2s ease-in-out; }
+        
+        /* Кастомный скроллбар в стиле палитры */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1F1713; }
+        ::-webkit-scrollbar-thumb { background: #604539; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -49,7 +64,6 @@
             const [error, setError] = useState(null);
 
             const Icons = useMemo(() => window.lucideReact || {}, []);
-
             const DATA_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
 
             const renderIcon = (IconComponent, size = 20, className = "") => {
@@ -70,7 +84,6 @@
                 if (!dateStr) return '—';
                 try {
                     const date = new Date(dateStr);
-                    if (isNaN(date.getTime())) return dateStr;
                     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
                 } catch (e) { return dateStr; }
             };
@@ -113,10 +126,7 @@
                     .filter(event => {
                         if (!event || !event.date) return false;
                         const eventDate = new Date(event.date);
-                        const isFuture = eventDate >= today;
-                        const needed = event.neededStaff || {};
-                        const hasNeededStaff = Object.values(needed).some(count => parseInt(count) > 0);
-                        return isFuture && hasNeededStaff;
+                        return eventDate >= today;
                     })
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -129,21 +139,17 @@
                 setError(null);
                 try {
                     const response = await fetch(DATA_URL);
-                    if (!response.ok) throw new Error("Ошибка загрузки: " + response.status);
+                    if (!response.ok) throw new Error("Ошибка загрузки");
                     const data = await response.json();
                     processAndSetEvents(data);
                 } catch (err) {
-                    setError("Ошибка загрузки данных. Попробуйте обновить вручную.");
-                    console.error(err);
+                    setError("Ошибка загрузки данных.");
                 } finally {
                     setLoading(false);
                 }
             };
 
-            useEffect(() => {
-                const timer = setTimeout(fetchEvents, 100);
-                return () => clearTimeout(timer);
-            }, []);
+            useEffect(() => { fetchEvents(); }, []);
 
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
@@ -153,51 +159,32 @@
                     try {
                         const json = JSON.parse(event.target.result);
                         processAndSetEvents(json);
-                        setError(null);
                     } catch (err) {
-                        setError("Ошибка: Файл не является валидным JSON.");
+                        setError("Ошибка: Файл не валиден.");
                     }
                 };
                 reader.readAsText(file);
             };
 
             return (
-                <div className="min-h-screen p-4 font-sans antialiased bg-[#14161a] text-slate-200">
+                <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-brand-light">
                     <div className="max-w-2xl mx-auto">
-                        <header className="mb-6 flex items-center justify-between border-b border-white/5 pb-4">
+                        <header className="mb-6 flex items-center justify-between border-b border-brand-accent/20 pb-4">
                             <div>
-                                <h1 className="text-2xl font-bold tracking-tight text-white">Мероприятия</h1>
-                                <span className="text-[10px] text-[#8a8d91] uppercase tracking-widest font-medium">Monitoring System</span>
+                                <h1 className="text-2xl font-bold tracking-tight text-brand-light">Мероприятия</h1>
+                                <span className="text-[10px] text-brand-accent uppercase tracking-widest font-bold">Monitoring System</span>
                             </div>
                             <button 
                                 onClick={fetchEvents} 
-                                className={`p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-[#c29b61] active:scale-95 transition-all ${loading ? 'animate-spin' : ''}`}
+                                className={`p-2.5 rounded-full bg-brand-card hover:bg-brand-accent/20 text-brand-accent active:scale-95 transition-all ${loading ? 'animate-spin' : ''}`}
                             >
                                 {renderIcon(Icons.RefreshCw, 18)}
                             </button>
                         </header>
 
                         {error && (
-                            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                            <div className="mb-4 p-4 bg-red-900/20 border border-red-500/20 text-red-300 rounded-xl text-xs flex items-center gap-2">
                                 {renderIcon(Icons.AlertCircle, 14)} {error}
-                            </div>
-                        )}
-
-                        {events.length === 0 && !loading && (
-                            <div 
-                                className={`relative border border-dashed rounded-2xl p-12 text-center transition-all ${dragActive ? 'border-[#c29b61] bg-[#c29b61]/5' : 'border-white/10 bg-[#1c1f24]'}`}
-                                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                                onDragLeave={() => setDragActive(false)}
-                                onDrop={(e) => {
-                                    e.preventDefault(); setDragActive(false);
-                                    if (e.dataTransfer.files[0]) handleFileUpload({target: {files: e.dataTransfer.files}});
-                                }}
-                            >
-                                <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                <div className="flex justify-center mb-4 text-[#c29b61]/50">
-                                    {renderIcon(Icons.FileJson, 40)}
-                                </div>
-                                <p className="text-sm text-[#8a8d91]">Перетащите JSON файл сюда или нажмите для выбора</p>
                             </div>
                         )}
 
@@ -207,54 +194,52 @@
                                 const allStaff = [...(event.staff || []), ...missing];
 
                                 return (
-                                    <div key={event.id || idx} className="bg-[#1c1f24] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
+                                    <div key={event.id || idx} className="bg-brand-card rounded-2xl border border-white/5 overflow-hidden shadow-xl">
                                         <div className="p-5">
-                                            <div className="flex items-center gap-2 text-[#c29b61] text-[11px] font-bold uppercase mb-2 tracking-wider">
-                                                <div className="flex items-center gap-1.5 bg-[#c29b61]/10 px-2 py-0.5 rounded-md">
+                                            <div className="flex items-center gap-2 text-brand-light text-[11px] font-bold uppercase mb-2 tracking-wider">
+                                                <div className="flex items-center gap-1.5 bg-brand-accent/20 px-2 py-0.5 rounded-md text-brand-accent">
                                                     {renderIcon(Icons.Calendar, 12)}
                                                     <span>{formatDate(event.date)}</span>
                                                 </div>
-                                                {event.start && <span className="text-[#8a8d91] font-medium">/ {event.start}</span>}
+                                                {event.start && <span className="text-brand-light/60 font-medium">/ {event.start}</span>}
                                             </div>
                                             
-                                            <h2 className="text-xl font-bold mb-3 text-white leading-tight">{event.name}</h2>
+                                            <h2 className="text-xl font-bold mb-3 text-brand-light leading-tight">{event.name}</h2>
                                             
-                                            <div className="flex items-center gap-2 text-[#8a8d91] text-sm mb-5 bg-[#14161a]/50 p-2 rounded-lg inline-flex max-w-full">
-                                                {renderIcon(Icons.MapPin, 14, "shrink-0")}
+                                            <div className="flex items-center gap-2 text-brand-light/70 text-sm mb-5 bg-brand-dark/40 p-2 rounded-lg inline-flex max-w-full">
+                                                {renderIcon(Icons.MapPin, 14, "shrink-0 text-brand-accent")}
                                                 <span className="truncate">{event.location}</span>
                                             </div>
 
-                                            <div className="space-y-2.5 border-t border-white/5 pt-5">
+                                            <div className="space-y-2.5 border-t border-brand-accent/10 pt-5">
                                                 {allStaff.map((person, pIdx) => (
-                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-[#1c1f24] border-dashed border-[#c29b61]/30 opacity-80' : 'bg-[#14161a]/60 border-white/[0.03] hover:bg-[#14161a]'}`}>
+                                                    <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${person.isPlaceholder ? 'bg-brand-card border-dashed border-brand-accent/40 opacity-70' : 'bg-brand-dark/50 border-white/[0.05] hover:bg-brand-dark/80'}`}>
                                                         <div className="flex items-center gap-3 overflow-hidden">
-                                                            {/* Иконка роли */}
-                                                            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-[#c29b61]/5 border-[#c29b61]/20 text-[#c29b61]' : 'bg-[#1c1f24] border-white/5 text-[#c29b61]'}`}>
-                                                                {person.isPlaceholder ? getRoleIcon(person.roleKey, 18) : getRoleIcon(person.rolesDisplay || (person.roles?.[0]), 20)}
+                                                            {/* Кружок с иконкой Контакта (Запрос №1) */}
+                                                            <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border ${person.isPlaceholder ? 'bg-brand-accent/10 border-brand-accent/20 text-brand-accent' : 'bg-brand-card border-brand-accent/30 text-brand-accent'}`}>
+                                                                {person.isPlaceholder 
+                                                                    ? getRoleIcon(person.roleKey, 18) 
+                                                                    : renderIcon(Icons.Contact, 20)
+                                                                }
                                                             </div>
                                                             
                                                             <div className="overflow-hidden">
-                                                                <div className="flex items-center gap-2">
-                                                                    {/* Иконка контакта (Запрос №1) */}
-                                                                    {!person.isPlaceholder && renderIcon(Icons.Contact, 14, "text-[#8a8d91] shrink-0")}
-                                                                    
-                                                                    <div className={`text-[13px] font-semibold truncate ${person.isPlaceholder ? 'text-[#c29b61]' : 'text-white'}`}>
-                                                                        {person.isPlaceholder ? 'Требуется' : person.name}
-                                                                    </div>
+                                                                <div className={`text-[13px] font-semibold truncate ${person.isPlaceholder ? 'text-brand-accent' : 'text-brand-light'}`}>
+                                                                    {person.isPlaceholder ? 'Требуется' : person.name}
                                                                 </div>
-                                                                <div className="text-[10px] text-[#8a8d91] uppercase font-medium mt-0.5 tracking-tight">
+                                                                <div className="text-[10px] text-brand-light/50 uppercase font-bold mt-0.5 tracking-tight">
                                                                     {person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}
                                                                 </div>
                                                             </div>
                                                         </div>
 
                                                         {!person.isPlaceholder ? (
-                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-[#1c1f24] rounded-lg border border-white/5 shrink-0">
-                                                                {renderIcon(Icons.Clock, 12, "text-[#c29b61]")}
-                                                                <span className="text-xs font-mono font-bold text-[#c29b61]">{person.time || '--:--'}</span>
+                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-brand-card rounded-lg border border-brand-accent/20 shrink-0">
+                                                                {renderIcon(Icons.Clock, 12, "text-brand-accent")}
+                                                                <span className="text-xs font-mono font-bold text-brand-accent">{person.time || '--:--'}</span>
                                                             </div>
                                                         ) : (
-                                                            <div className="p-2 text-[#c29b61]/40">
+                                                            <div className="p-2 text-brand-accent/40">
                                                                 {renderIcon(Icons.UserPlus, 16)}
                                                             </div>
                                                         )}
@@ -267,7 +252,6 @@
                             })}
                         </div>
                     </div>
-                    {/* Нижний отступ для мобильных */}
                     <div className="h-10"></div>
                 </div>
             );
