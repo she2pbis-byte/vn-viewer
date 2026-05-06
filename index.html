@@ -81,15 +81,24 @@
             opacity: 1;
         }
 
-        /* Анимация пульсирующей красной рамки толщиной 4px */
+        /* Улучшенная анимация: более яркие цвета и сильное свечение */
         @keyframes pulse-red-border {
-            0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-            50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
-            100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+            0% { 
+                border-color: rgba(255, 0, 0, 0.4); 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+            }
+            50% { 
+                border-color: rgba(255, 0, 0, 1); 
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.3);
+            }
+            100% { 
+                border-color: rgba(255, 0, 0, 0.4); 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+            }
         }
         .urgent-vacancy-border {
-            animation: pulse-red-border 2s infinite ease-in-out;
-            border: 4px solid rgba(239, 68, 68, 0.5) !important;
+            animation: pulse-red-border 1.5s infinite ease-in-out;
+            border: 4px solid red !important;
         }
     </style>
 </head>
@@ -285,7 +294,6 @@
                                     const isExpanded = expandedEventId === eventId;
                                     const missing = getMissingStaff(event);
                                     
-                                    // Вакансия срочная, если не хватает Официантов или Барменов
                                     const hasUrgentVacancies = missing.some(m => 
                                         m.roleKey === 'оф' || m.roleKey === 'бар'
                                     );
