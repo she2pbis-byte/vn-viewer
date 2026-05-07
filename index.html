@@ -485,14 +485,12 @@
                                                         {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
                                                     
-                                                    {/* Название мероприятия над чертой */}
                                                     <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                     
-                                                    {/* Линия и подпись статуса под названием */}
                                                     {!isExpanded && (
-                                                        <div className="space-y-2 mt-1">
+                                                        <div className="space-y-2 mt-1 flex flex-col items-end">
                                                             <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
-                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2]">
+                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2] justify-end">
                                                                 {hasUrgentVacancies ? (
                                                                     <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
                                                                 ) : (
