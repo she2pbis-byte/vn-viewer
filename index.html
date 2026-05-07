@@ -479,24 +479,28 @@
                                             toggleExpand(eventId); 
                                         }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             <div className="p-5 flex items-start justify-between">
-                                                <div className="space-y-1 pr-4">
-                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
+                                                <div className="space-y-1 pr-4 w-full">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
-                                                    <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
+                                                    
+                                                    {/* Линия и подпись статуса перемещены сюда */}
+                                                    {!isExpanded && (
+                                                        <div className="space-y-2 mt-1">
+                                                            <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
+                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2]">
+                                                                {hasUrgentVacancies ? (
+                                                                    <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
+                                                                ) : (
+                                                                    <><span>ПЕРСОНАЛ</span><span>НАБРАН</span></>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <h2 className={`text-lg font-bold transition-all mt-3 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                 </div>
-                                                
-                                                {!isExpanded && (
-                                                    <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-right shrink-0 mt-1.5">
-                                                        <div className={hasUrgentVacancies ? "text-red-400" : "text-white/40"}>
-                                                            {hasUrgentVacancies ? "ТРЕБУЕТСЯ" : "ПЕРСОНАЛ"}
-                                                        </div>
-                                                        <div className={hasUrgentVacancies ? "text-red-400" : "text-white/40"}>
-                                                            {hasUrgentVacancies ? "СОТРУДНИК" : "НАБРАН"}
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
 
                                             <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
