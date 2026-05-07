@@ -82,9 +82,10 @@
             50% { border-color: rgba(255, 0, 0, 1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.3); }
             100% { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
         }
+        /* Установлено 2px согласно запросу */
         .urgent-vacancy-border {
             animation: pulse-red-border 1.5s infinite ease-in-out;
-            border: 4px solid red !important;
+            border: 2px solid red !important;
         }
 
         .autocomplete-dropdown {
@@ -424,7 +425,8 @@
                                     {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
                                 </div>
                             </div>
-                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[4px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
+                            {/* Рамка установлена в 2px */}
+                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[2px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
                                 <img src="catering-b.ico" alt="Logo" className={`w-9 h-9 object-contain ${loading ? 'rotate-anim' : ''}`} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>'; }} />
                             </button>
                         </header>
