@@ -478,14 +478,17 @@
                                             if (e.target.closest('.apply-form-container')) return;
                                             toggleExpand(eventId); 
                                         }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
-                                            <div className="p-5 flex items-start justify-between">
-                                                <div className="space-y-1 pr-4 w-full">
+                                            <div className="p-5 flex flex-col">
+                                                <div className="space-y-1 w-full">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
                                                     
-                                                    {/* Линия и подпись статуса перемещены сюда */}
+                                                    {/* Название мероприятия над чертой */}
+                                                    <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
+                                                    
+                                                    {/* Линия и подпись статуса под названием */}
                                                     {!isExpanded && (
                                                         <div className="space-y-2 mt-1">
                                                             <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
@@ -498,8 +501,6 @@
                                                             </div>
                                                         </div>
                                                     )}
-
-                                                    <h2 className={`text-lg font-bold transition-all mt-3 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                 </div>
                                             </div>
 
