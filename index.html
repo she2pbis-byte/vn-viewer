@@ -526,11 +526,11 @@
                                                                             <div className="text-[11px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
                                                                         </div>
                                                                     </div>
-                                                                    {!person.isPlaceholder ? (
+                                                                    {!person.isPlaceholder && (
                                                                         <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
                                                                             <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
                                                                         </div>
-                                                                    ) : <div className="p-1.5 text-white/20 animate-pulse">{renderIcon('UserPlus', 18, "text-white/40")}</div>}
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
