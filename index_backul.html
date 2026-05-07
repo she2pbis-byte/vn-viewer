@@ -84,7 +84,7 @@
         }
         .urgent-vacancy-border {
             animation: pulse-red-border 1.5s infinite ease-in-out;
-            border: 4px solid red !important;
+            border: 2px solid red !important;
         }
 
         .autocomplete-dropdown {
@@ -424,7 +424,7 @@
                                     {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
                                 </div>
                             </div>
-                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[4px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
+                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[2px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
                                 <img src="catering-b.ico" alt="Logo" className={`w-9 h-9 object-contain ${loading ? 'rotate-anim' : ''}`} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>'; }} />
                             </button>
                         </header>
@@ -465,12 +465,6 @@
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {filteredEvents.length === 0 && !loading && (
-                                    <div className="py-20 text-center opacity-40 flex flex-col items-center gap-3">
-                                        <div className="bg-white/5 p-4 rounded-full">{renderIcon('CalendarX2', 32, "text-white/40")}</div>
-                                        <p className="text-sm font-bold uppercase tracking-widest px-10">{staffSearch ? `Для сотрудника "${staffSearch}" мероприятий не найдено` : 'Нет подходящих мероприятий'}</p>
-                                    </div>
-                                )}
                                 {filteredEvents.map((event, idx) => {
                                     const eventId = event.id || `event-${idx}`;
                                     const isExpanded = expandedEventId === eventId;
@@ -484,18 +478,25 @@
                                             if (e.target.closest('.apply-form-container')) return;
                                             toggleExpand(eventId); 
                                         }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
-                                            <div className="p-5 flex items-center">
+                                            <div className="p-5 flex flex-col">
                                                 <div className="space-y-1 w-full">
-                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
                                                         {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
-                                                    <h2 className={`text-lg font-bold transition-all ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                     
-                                                    {/* Статус набора в свернутом виде */}
+                                                    <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
+                                                    
                                                     {!isExpanded && (
-                                                        <div className="text-[11px] font-bold uppercase tracking-widest text-white mt-1">
-                                                            {hasUrgentVacancies ? "ТРЕБУЕТСЯ СОТРУДНИК" : "ПЕРСОНАЛ НАБРАН"}
+                                                        <div className="space-y-2 mt-1 flex flex-col items-end">
+                                                            <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
+                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2] justify-end">
+                                                                {hasUrgentVacancies ? (
+                                                                    <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
+                                                                ) : (
+                                                                    <><span>ПЕРСОНАЛ</span><span>НАБРАН</span></>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -503,13 +504,14 @@
 
                                             <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
                                                 <div className="px-5 pb-6">
-                                                    <div className="flex items-center gap-2 text-white/90 text-[14px] mb-5 bg-black/20 px-3 py-2 rounded-lg inline-flex max-w-full">
-                                                        {renderIcon('MapPin', 15, "shrink-0 text-white/60")}
-                                                        <span className="truncate">{event.location}</span>
+                                                    <div className="flex items-center gap-2 text-white/90 text-[14px] mb-5 bg-black/20 px-3 py-2 rounded-xl inline-flex max-w-full">
+                                                        <div className="w-6 h-6 rounded-md bg-transparent flex items-center justify-center shrink-0">
+                                                            <img src="location.png" alt="Loc" className="w-6 h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📍'; }} />
+                                                        </div>
+                                                        <span className="truncate font-medium">{event.location}</span>
                                                     </div>
 
                                                     <div className="space-y-2.5 border-t border-white/10 pt-5">
-                                                        {/* Заголовок состава теперь белый */}
                                                         <div className="text-[10px] uppercase font-black text-white tracking-[0.2em] mb-1">Состав команды</div>
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
@@ -525,8 +527,7 @@
                                                                         </div>
                                                                     </div>
                                                                     {!person.isPlaceholder ? (
-                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
-                                                                            {renderIcon('Clock', 13, isSearchedStaff ? "text-brand-dark/70" : "text-white/70")}
+                                                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
                                                                             <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
                                                                         </div>
                                                                     ) : <div className="p-1.5 text-white/20 animate-pulse">{renderIcon('UserPlus', 18, "text-white/40")}</div>}
@@ -615,9 +616,6 @@
                                                                                         Отправить
                                                                                     </button>
                                                                                 </div>
-                                                                                {submitStatus === 'error' && (
-                                                                                    <div className="text-[10px] text-red-500 text-center font-bold uppercase">Ошибка отправки. Попробуйте еще раз.</div>
-                                                                                )}
                                                                             </>
                                                                         )}
                                                                     </div>
@@ -632,9 +630,6 @@
                                 })}
                             </div>
                         )}
-                    </div>
-                    <div className="h-20 flex items-center justify-center opacity-20">
-                        <span className="text-[10px] font-bold tracking-widest uppercase">VN Event Management System</span>
                     </div>
                 </div>
             );
