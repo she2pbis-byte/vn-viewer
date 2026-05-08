@@ -182,23 +182,14 @@
                 e.stopPropagation();
                 if (!location) return;
                 
-                // Кодируем адрес для URL
                 const encodedLocation = encodeURIComponent(location);
-                
-                // Проверка на iOS устройства
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                 
                 if (isIOS) {
-                    // Apple Maps для iOS
                     window.location.href = `maps://maps.apple.com/?q=${encodedLocation}`;
                 } else {
-                    // Google Maps / Другие карты для Android и десктопа
-                    // Сначала пробуем geo intent для мобильных приложений
                     const geoUrl = `geo:0,0?q=${encodedLocation}`;
                     window.location.href = geoUrl;
-                    
-                    // Резервный переход на веб-версию через короткую задержку, 
-                    // если приложение не открылось (для десктопа)
                     setTimeout(() => {
                         window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
                     }, 500);
@@ -561,7 +552,6 @@
                                                                 <img src="location.png" alt="Loc" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📍'; }} />
                                                             </div>
                                                             <span className="truncate font-medium border-b border-white/20 group-active:text-brand-accent group-active:border-brand-accent">{event.location || 'Уточняется'}</span>
-                                                            <div className="ml-1 opacity-40 group-active:opacity-100">{renderIcon('ExternalLink', 12)}</div>
                                                         </button>
                                                         
                                                         {event.admin && (
