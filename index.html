@@ -521,10 +521,10 @@
                                     return (
                                         <div key={eventId} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in transition-all relative ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             
-                                            {/* Кнопка управления состоянием */}
+                                            {/* Кнопка управления состоянием с цветом фона bg-brand-card */}
                                             <button 
                                                 onClick={(e) => toggleExpand(e, eventId)}
-                                                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/30 border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-black/50 overflow-hidden"
+                                                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-brand-card border border-white/20 flex items-center justify-center active:scale-90 transition-all hover:brightness-110 overflow-hidden"
                                             >
                                                 {isExpanded ? (
                                                     <img 
