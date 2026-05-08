@@ -122,6 +122,24 @@
             max-height: 150px;
             overflow-y: auto;
         }
+
+        /* Стиль для кастомной иконки "i" */
+        .info-circle-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 2px solid #FFEED2;
+            border-radius: 50%;
+            color: #FFEED2;
+            font-family: serif;
+            font-weight: bold;
+            font-style: italic;
+            font-size: 18px;
+            line-height: 1;
+            padding-right: 1px; /* Визуальная компенсация наклона "i" */
+        }
     </style>
 </head>
 <body>
@@ -521,7 +539,6 @@
                                     return (
                                         <div key={eventId} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in transition-all relative ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             
-                                            {/* Кнопка управления состоянием с цветом фона bg-brand-card */}
                                             <button 
                                                 onClick={(e) => toggleExpand(e, eventId)}
                                                 className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-brand-card border border-white/20 flex items-center justify-center active:scale-90 transition-all hover:brightness-110 overflow-hidden"
@@ -537,9 +554,7 @@
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="transition-transform duration-300">
-                                                        {renderIcon('ChevronDown', 22, "text-brand-accent")}
-                                                    </div>
+                                                    <div className="info-circle-icon">i</div>
                                                 )}
                                             </button>
 
