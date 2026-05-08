@@ -66,10 +66,10 @@
         .role-icon-dark { filter: brightness(0.2); }
         .grayscale-img { filter: grayscale(1) opacity(0.3); }
 
-        /* Эффект для удаления белого фона у .ico иконки телефона */
+        /* Эффект для прозрачности фона иконки телефона */
         .phone-icon-transparent {
-            mix-blend-mode: screen;
-            filter: brightness(1.5) contrast(1.1);
+            mix-blend-mode: screen; 
+            filter: brightness(1.2) contrast(1.1);
         }
 
         .content-transition {
@@ -520,9 +520,9 @@
                                                         
                                                         {event.admin && (
                                                             <div className="flex items-center gap-3 text-white text-xl font-black bg-white/10 px-4 py-2.5 rounded-2xl w-fit border border-white/10 shadow-lg">
-                                                                <div className="w-6 h-6 shrink-0 flex items-center justify-center overflow-hidden">
+                                                                <div className="w-7 h-7 shrink-0 flex items-center justify-center">
                                                                     <img 
-                                                                        src="phone.ico" 
+                                                                        src="phone.png" 
                                                                         alt="Admin" 
                                                                         className="w-full h-full object-contain phone-icon-transparent" 
                                                                         onError={(e) => { 
