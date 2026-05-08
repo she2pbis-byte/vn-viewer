@@ -123,22 +123,20 @@
             overflow-y: auto;
         }
 
-        /* Стиль для кастомной иконки "i" */
+        /* Стиль для кастомной иконки "i" без внешней рамки */
         .info-circle-icon {
             display: flex;
             align-items: center;
             justify-content: center;
             width: 28px;
             height: 28px;
-            border: 2px solid #FFEED2;
-            border-radius: 50%;
             color: #FFEED2;
             font-family: serif;
             font-weight: bold;
             font-style: italic;
-            font-size: 18px;
+            font-size: 22px;
             line-height: 1;
-            padding-right: 1px; /* Визуальная компенсация наклона "i" */
+            padding-right: 1px;
         }
     </style>
 </head>
@@ -541,7 +539,7 @@
                                             
                                             <button 
                                                 onClick={(e) => toggleExpand(e, eventId)}
-                                                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-brand-card border border-white/20 flex items-center justify-center active:scale-90 transition-all hover:brightness-110 overflow-hidden"
+                                                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all hover:brightness-110 overflow-hidden"
                                             >
                                                 {isExpanded ? (
                                                     <img 
