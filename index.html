@@ -148,7 +148,10 @@
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
             const [lastUpdated, setLastUpdated] = useState(null);
-            const [expandedEventId, setExpandedEventId] = useState(null);
+            
+            // Заменяем expandedEventId (string) на массив открытых ID
+            const [expandedEventIds, setExpandedEventIds] = useState([]);
+            
             const [filter, setFilter] = useState('ALL');
             
             const [staffSearch, setStaffSearch] = useState('');
@@ -196,15 +199,21 @@
                 }
             };
 
-            const toggleExpand = (id) => {
-                if (expandedEventId !== id) {
+            // Логика открытия/закрытия теперь работает с массивом (несколько открытых областей)
+            const toggleExpand = (e, id) => {
+                e.stopPropagation();
+                setExpandedEventIds(prev => 
+                    prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+                );
+                
+                // Очищаем форму заявки если закрываем
+                if (applyingFor === id && expandedEventIds.includes(id)) {
                     setApplyingFor(null);
                     setSubmitStatus(null);
                     setApplyName('');
                     setApplyPhone('');
                     setIsPhoneAutoFilled(false);
                 }
-                setExpandedEventId(prev => prev === id ? null : id);
             };
 
             const getRoleIcon = (roleName, isPlaceholder = false) => {
@@ -506,18 +515,27 @@
                             <div className="space-y-4">
                                 {filteredEvents.map((event, idx) => {
                                     const eventId = event.id || `event-${idx}`;
-                                    const isExpanded = expandedEventId === eventId;
+                                    // Теперь проверяем наличие в массиве
+                                    const isExpanded = expandedEventIds.includes(eventId);
                                     const missing = getMissingStaff(event);
                                     const hasUrgentVacancies = event._hasUrgent;
                                     const allStaff = [...(event.staff || []), ...missing];
                                     const timeDisplay = event.start ? (event.end ? `${event.start} – ${event.end}` : event.start) : null;
 
                                     return (
-                                        <div key={eventId} onClick={(e) => { 
-                                            if (e.target.closest('.apply-form-container') || e.target.closest('.admin-call-btn') || e.target.closest('.location-btn')) return;
-                                            toggleExpand(eventId); 
-                                        }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
-                                            <div className="p-5 flex flex-col">
+                                        <div key={eventId} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in transition-all relative ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
+                                            
+                                            {/* Новая кнопка раскрытия в верхнем правом углу */}
+                                            <button 
+                                                onClick={(e) => toggleExpand(e, eventId)}
+                                                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/30 border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-black/50"
+                                            >
+                                                <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+                                                    {renderIcon('ChevronDown', 22, "text-brand-accent")}
+                                                </div>
+                                            </button>
+
+                                            <div className="p-5 flex flex-col pr-16"> {/* pr-16 чтобы текст не заезжал под кнопку */}
                                                 <div className="space-y-1 w-full">
                                                     <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
@@ -527,8 +545,8 @@
                                                     <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                     
                                                     {!isExpanded && (
-                                                        <div className="space-y-2 mt-1 flex flex-col items-end">
-                                                            <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
+                                                        <div className="space-y-2 mt-1 flex flex-col items-start">
+                                                            <div className="h-[1px] w-full bg-white/20 opacity-50"></div>
                                                             <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2] justify-end">
                                                                 {hasUrgentVacancies ? (
                                                                     <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
