@@ -133,6 +133,15 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
+        // Словарь телефонов администраторов
+        const ADMIN_PHONES = {
+            "Илья": "+79051365031",
+            "Михаил": "+79605424065",
+            "Александр": "+79806586049",
+            "Светлана": "+79038201110",
+            "ИВ": "+79066336763"
+        };
+
         const App = () => {
             const [events, setEvents] = useState([]);
             const [staffDatabase, setStaffDatabase] = useState([]);
@@ -383,6 +392,14 @@
                 setShowApplyAutocomplete(false);
             };
 
+            const handleAdminCall = (e, adminName) => {
+                e.stopPropagation();
+                const phone = ADMIN_PHONES[adminName];
+                if (phone) {
+                    window.location.href = `tel:${phone}`;
+                }
+            };
+
             const handleSendApplication = async (event) => {
                 if (!isFormValid) return;
 
@@ -480,7 +497,7 @@
 
                                     return (
                                         <div key={eventId} onClick={(e) => { 
-                                            if (e.target.closest('.apply-form-container')) return;
+                                            if (e.target.closest('.apply-form-container') || e.target.closest('.admin-call-btn')) return;
                                             toggleExpand(eventId); 
                                         }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             <div className="p-5 flex flex-col">
@@ -518,7 +535,10 @@
                                                         </div>
                                                         
                                                         {event.admin && (
-                                                            <div className="flex items-center gap-2 text-white text-lg font-bold bg-white/5 px-3 py-1.5 rounded-xl w-fit border border-white/10 shadow-md">
+                                                            <button 
+                                                                onClick={(e) => handleAdminCall(e, event.admin)}
+                                                                className="admin-call-btn flex items-center gap-2 text-white text-lg font-bold bg-white/5 px-3 py-1.5 rounded-xl w-fit border border-white/10 shadow-md active:bg-white/20 transition-all cursor-pointer"
+                                                            >
                                                                 <div className="w-5 h-5 shrink-0 flex items-center justify-center">
                                                                     <img 
                                                                         src="phone.png" 
@@ -531,7 +551,7 @@
                                                                     />
                                                                 </div>
                                                                 <span className="tracking-tight">{event.admin}</span>
-                                                            </div>
+                                                            </button>
                                                         )}
                                                     </div>
 
