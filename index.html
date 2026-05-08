@@ -510,10 +510,10 @@
                                     return (
                                         <div key={eventId} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in transition-all relative ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
                                             
-                                            {/* Кнопка ОТКРЫТЬ / ЗАКРЫТЬ */}
+                                            {/* Кнопка ОТКРЫТЬ / ЗАКРЫТЬ - Изменена высота и размер шрифта */}
                                             <button 
                                                 onClick={(e) => toggleExpand(e, eventId)}
-                                                className={`absolute top-4 right-4 z-20 h-9 px-4 rounded-full font-black text-[10px] uppercase tracking-[0.1em] border transition-all active:scale-95 flex items-center justify-center ${isExpanded ? 'bg-black/40 text-white/60 border-white/10' : 'bg-brand-accent text-brand-dark border-brand-accent shadow-md'}`}
+                                                className={`absolute top-4 right-4 z-20 h-[1.8rem] px-3 rounded-full font-black text-[12px] uppercase tracking-[0.1em] border transition-all active:scale-95 flex items-center justify-center ${isExpanded ? 'bg-black/40 text-white/60 border-white/10' : 'bg-brand-accent text-brand-dark border-brand-accent shadow-md'}`}
                                             >
                                                 {isExpanded ? 'Закрыть' : 'Открыть'}
                                             </button>
