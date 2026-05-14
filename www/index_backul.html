@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Кейтеринг ВН</title>
+    
+    <link rel="icon" href="catering-b.ico" type="image/x-icon">
+    
+    <meta name="theme-color" content="#1F1713">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#1F1713',    
+                            card: '#604539',    
+                            accent: '#FFEED2',
+                            light: '#FFFFFF',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
+
+    <style>
+        body { 
+            background-color: #1F1713; 
+            margin: 0; 
+            color: #FFFFFF; 
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        #root { min-height: 100vh; }
+        .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1F1713; }
+        ::-webkit-scrollbar-thumb { background: #FFEED2; border-radius: 10px; }
+        
+        .rotate-anim { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .role-icon-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 6px;
+        }
+        .role-icon-dark { filter: brightness(0.2); }
+        .grayscale-img { filter: grayscale(1) opacity(0.3); }
+
+        .content-transition {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, opacity 0.3s ease-in;
+        }
+        .content-transition.expanded {
+            max-height: 3500px;
+            opacity: 1;
+        }
+
+        @keyframes pulse-red-border {
+            0% { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
+            50% { border-color: rgba(255, 0, 0, 1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.3); }
+            100% { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
+        }
+        .urgent-vacancy-border {
+            animation: pulse-red-border 1.5s infinite ease-in-out;
+            border: 2px solid red !important;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: #2D221C;
+            border: 2px solid #FFEED2;
+            border-top: none;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            margin-top: -2px;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.7);
+        }
+
+        .apply-autocomplete {
+            position: absolute;
+            z-index: 60;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1411;
+            border: 1px solid #FFEED2;
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
+        const TG_CHAT_ID = "7016844853";
+
+        const App = () => {
+            const [events, setEvents] = useState([]);
+            const [staffDatabase, setStaffDatabase] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [isInitialLoad, setIsInitialLoad] = useState(true);
+            const [error, setError] = useState(null);
+            const [lastUpdated, setLastUpdated] = useState(null);
+            const [expandedEventId, setExpandedEventId] = useState(null);
+            const [filter, setFilter] = useState('ALL');
+            
+            const [staffSearch, setStaffSearch] = useState('');
+            const [showAutocomplete, setShowAutocomplete] = useState(false);
+            const autocompleteRef = useRef(null);
+
+            const [applyingFor, setApplyingFor] = useState(null);
+            const [applyName, setApplyName] = useState('');
+            const [applyPhone, setApplyPhone] = useState('');
+            const [isPhoneAutoFilled, setIsPhoneAutoFilled] = useState(false);
+            const [showApplyAutocomplete, setShowApplyAutocomplete] = useState(false);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [submitStatus, setSubmitStatus] = useState(null);
+
+            const Icons = useMemo(() => {
+                const lucide = window.LucideReact || window.lucideReact || {};
+                return lucide.icons || lucide;
+            }, []);
+
+            const EVENTS_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+            const STAFF_DB_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
+            const REFRESH_INTERVAL = 10 * 60 * 1000;
+
+            const renderIcon = (iconName, size = 18, className = "text-white") => {
+                const IconComponent = Icons[iconName];
+                if (!IconComponent) return <div style={{width: size, height: size}} className="bg-white/10 rounded-full" />;
+                return <IconComponent size={size} className={className} />;
+            };
+
+            const toggleExpand = (id) => {
+                if (expandedEventId !== id) {
+                    setApplyingFor(null);
+                    setSubmitStatus(null);
+                    setApplyName('');
+                    setApplyPhone('');
+                    setIsPhoneAutoFilled(false);
+                }
+                setExpandedEventId(prev => prev === id ? null : id);
+            };
+
+            const getRoleIcon = (roleName, isPlaceholder = false) => {
+                const roleStr = String(roleName || '').toLowerCase();
+                let src = '';
+                if (roleStr.includes('официант') || roleStr === 'оф') src = 'waiter.png';
+                else if (roleStr.includes('бармен') || roleStr === 'бар') src = 'bar.png';
+                else if (roleStr.includes('повар') || roleStr === 'пов') src = 'cook.png';
+                else if (roleStr.includes('мой') || roleStr === 'мойка' || roleStr.includes('чист')) src = 'clean.png';
+
+                if (src) {
+                    return (
+                        <img 
+                            src={src} 
+                            alt={roleName} 
+                            className={`role-icon-img ${isPlaceholder ? 'grayscale-img' : 'role-icon-dark'}`}
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = `<div class="text-[9px] font-bold text-brand-dark/50">${roleName.substring(0,2).toUpperCase()}</div>`;
+                            }}
+                        />
+                    );
+                }
+                return renderIcon('User', 20, isPlaceholder ? "text-brand-dark/30" : "text-brand-dark");
+            };
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '—';
+                try {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+                } catch (e) { return dateStr; }
+            };
+
+            const getMissingStaff = (event) => {
+                const needed = event.neededStaff || {};
+                const currentStaff = event.staff || [];
+                const missing = [];
+                const roleMapping = { 'оф': 'Официант', 'бар': 'Бармен', 'пов': 'Повар', 'мой': 'Мойщица' };
+
+                Object.entries(roleMapping).forEach(([key, label]) => {
+                    const countNeeded = parseInt(needed[key]) || 0;
+                    const countCurrent = currentStaff.filter(p => 
+                        (p.rolesDisplay || '').toLowerCase().includes(label.toLowerCase()) ||
+                        (p.roles || []).some(r => String(r).toLowerCase().includes(label.toLowerCase()))
+                    ).length;
+
+                    const diff = countNeeded - countCurrent;
+                    if (diff > 0) {
+                        for (let i = 0; i < diff; i++) {
+                            missing.push({
+                                id: `missing-${key}-${i}-${event.id || Math.random()}`,
+                                isPlaceholder: true,
+                                roleLabel: label,
+                                roleKey: key
+                            });
+                        }
+                    }
+                });
+                return missing;
+            };
+
+            const processAndSetEvents = useCallback((data) => {
+                if (!data) return;
+                const rawEvents = Array.isArray(data) ? data : [data];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const processedEvents = rawEvents
+                    .filter(event => {
+                        if (!event || !event.date) return false;
+                        const eventDate = new Date(event.date);
+                        if (eventDate < today) return false;
+                        const needed = event.neededStaff || {};
+                        const totalNeeded = Object.values(needed).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+                        return totalNeeded > 0 || (event.staff && event.staff.length > 0);
+                    })
+                    .map(event => ({
+                        ...event,
+                        _hasUrgent: getMissingStaff(event).some(m => m.roleKey === 'оф' || m.roleKey === 'бар')
+                    }))
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                setEvents(processedEvents);
+                setLastUpdated(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                if (processedEvents.length === 0) setError("Актуальных вакансий не найдено.");
+                else setError(null);
+            }, []);
+
+            const fetchInitialData = async () => {
+                setLoading(true);
+                try {
+                    const [eventsRes, staffRes] = await Promise.all([
+                        fetch(`${EVENTS_URL}?t=${Date.now()}`),
+                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
+                    ]);
+                    
+                    if (eventsRes.ok) {
+                        const eventsData = await eventsRes.json();
+                        processAndSetEvents(eventsData);
+                    }
+                    
+                    if (staffRes.ok) {
+                        const staffData = await staffRes.json();
+                        setStaffDatabase(Array.isArray(staffData) ? staffData : []);
+                    }
+                } catch (err) {
+                    setError("Не удалось загрузить данные.");
+                } finally {
+                    setLoading(false);
+                    setIsInitialLoad(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchInitialData();
+                const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
+                
+                const handleClickOutside = (event) => {
+                    if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
+                        setShowAutocomplete(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => {
+                    clearInterval(intervalId);
+                    document.removeEventListener('mousedown', handleClickOutside);
+                };
+            }, [REFRESH_INTERVAL]);
+
+            const currentStaffNames = useMemo(() => {
+                const names = new Set();
+                events.forEach(event => {
+                    if (event.staff) event.staff.forEach(person => { if (person.name) names.add(person.name); });
+                });
+                return Array.from(names).sort();
+            }, [events]);
+
+            const filteredAutocompleteNames = useMemo(() => {
+                if (!staffSearch || staffSearch.length < 1) return [];
+                const searchLower = staffSearch.toLowerCase();
+                return currentStaffNames.filter(name => name.toLowerCase().includes(searchLower)).slice(0, 10);
+            }, [currentStaffNames, staffSearch]);
+
+            const applyAutocompleteOptions = useMemo(() => {
+                if (!applyName || applyName.length < 1) return [];
+                const searchLower = applyName.toLowerCase();
+                return staffDatabase
+                    .filter(staff => staff.name && staff.name.toLowerCase().includes(searchLower))
+                    .slice(0, 5);
+            }, [staffDatabase, applyName]);
+
+            const filteredEvents = useMemo(() => {
+                let result = events;
+                if (filter === 'VACANCY') result = result.filter(e => e._hasUrgent);
+                if (staffSearch.trim()) {
+                    const searchLower = staffSearch.toLowerCase().trim();
+                    result = result.filter(e => e.staff && e.staff.some(p => p.name && p.name.toLowerCase().includes(searchLower)));
+                }
+                return result;
+            }, [events, filter, staffSearch]);
+
+            const handleNameInput = (val) => {
+                let name = val.replace(/\s/g, '');
+                if (name.length > 0) {
+                    name = name.charAt(0).toUpperCase() + name.slice(1);
+                }
+                setApplyName(name);
+                setIsPhoneAutoFilled(false);
+                setShowApplyAutocomplete(true);
+            };
+
+            const handlePhoneInput = (val) => {
+                let digits = val.replace(/\D/g, '');
+                if (digits.startsWith('8')) {
+                    digits = '7' + digits.substring(1);
+                } else if (digits.startsWith('9')) {
+                    digits = '7' + digits;
+                }
+                digits = digits.substring(0, 11);
+                if (digits.length > 0) {
+                    setApplyPhone('+' + digits);
+                } else {
+                    setApplyPhone('');
+                }
+                setIsPhoneAutoFilled(false);
+            };
+
+            const isPhoneValid = useMemo(() => {
+                const digits = applyPhone.replace(/\D/g, '');
+                return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
+            }, [applyPhone]);
+
+            const isFormValid = useMemo(() => {
+                return applyName.trim().length >= 2 && isPhoneValid;
+            }, [applyName, isPhoneValid]);
+
+            const handleSelectStaff = (staff) => {
+                handleNameInput(staff.name || '');
+                handlePhoneInput(staff.phone || '');
+                setIsPhoneAutoFilled(!!staff.phone);
+                setShowApplyAutocomplete(false);
+            };
+
+            const handleSendApplication = async (event) => {
+                if (!isFormValid) return;
+
+                setIsSubmitting(true);
+                const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${applyName.trim()}\n📞 Телефон: ${applyPhone}`;
+                
+                try {
+                    const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: TG_CHAT_ID,
+                            text: message,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                    if (res.ok) {
+                        setSubmitStatus('success');
+                        setApplyName('');
+                        setApplyPhone('');
+                        setIsPhoneAutoFilled(false);
+                        setTimeout(() => {
+                            setApplyingFor(null);
+                            setSubmitStatus(null);
+                        }, 3000);
+                    } else {
+                        throw new Error();
+                    }
+                } catch (e) {
+                    setSubmitStatus('error');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
+                    <div className="max-w-2xl mx-auto">
+                        <header className="mb-4 flex items-center justify-between border-b border-white/20 pb-4">
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Кейтеринг ВН</h1>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
+                                    {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
+                                </div>
+                            </div>
+                            <button onClick={() => fetchInitialData()} disabled={loading} className={`relative w-14 h-14 rounded-full bg-brand-card flex items-center justify-center border-[2px] border-[#FFEED2] overflow-hidden cursor-pointer active:scale-90 transition-all ${loading ? 'opacity-50' : 'opacity-100'} shadow-lg`}>
+                                <img src="catering-b.ico" alt="Logo" className={`w-9 h-9 object-contain ${loading ? 'rotate-anim' : ''}`} onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class="text-xs font-bold text-white">VN</div>'; }} />
+                            </button>
+                        </header>
+
+                        <div className="mb-3 flex gap-2">
+                            <button onClick={() => setFilter('ALL')} className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.1)]' : 'bg-white/5 text-white/60 border-white/10'}`}>Все</button>
+                            <button onClick={() => setFilter('VACANCY')} className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-white/5 text-white/60 border-white/10'}`}>Есть вакансия</button>
+                        </div>
+
+                        <div className="mb-6 relative" ref={autocompleteRef}>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-40">{renderIcon('Search', 16)}</div>
+                                <input type="text" value={staffSearch} onChange={(e) => { setStaffSearch(e.target.value); setShowAutocomplete(true); }} onFocus={() => setShowAutocomplete(true)} placeholder="введи свою фамилию..." className={`w-full bg-white/5 border-[2px] border-brand-accent rounded-xl py-3 pl-11 pr-12 text-[14px] font-medium text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 transition-all shadow-[0_0_15px_rgba(255,238,210,0.1)] ${showAutocomplete && filteredAutocompleteNames.length > 0 ? 'rounded-b-none' : ''}`} />
+                                {staffSearch && (
+                                    <button onClick={() => { setStaffSearch(''); setShowAutocomplete(false); }} className="absolute inset-y-0 right-3 flex items-center justify-center transition-all active:scale-75">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF0000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    </button>
+                                )}
+                            </div>
+                            {showAutocomplete && filteredAutocompleteNames.length > 0 && (
+                                <div className="autocomplete-dropdown">
+                                    {filteredAutocompleteNames.map((name, i) => (
+                                        <div key={i} onClick={() => { setStaffSearch(name); setShowAutocomplete(false); }} className="px-4 py-3.5 text-[14px] border-b border-white/5 last:border-0 active:bg-brand-accent active:text-brand-dark transition-colors cursor-pointer flex items-center gap-3">
+                                            <div className="w-7 h-7 rounded-full bg-brand-accent/20 flex items-center justify-center text-[10px] font-bold text-brand-accent border border-brand-accent/30">{name.charAt(0)}</div>
+                                            <span className="font-medium tracking-tight">{name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {error && !loading && <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('Info', 14, "text-brand-accent")} {error}</div>}
+
+                        {isInitialLoad && loading ? (
+                            <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                                <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
+                                <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {filteredEvents.map((event, idx) => {
+                                    const eventId = event.id || `event-${idx}`;
+                                    const isExpanded = expandedEventId === eventId;
+                                    const missing = getMissingStaff(event);
+                                    const hasUrgentVacancies = event._hasUrgent;
+                                    const allStaff = [...(event.staff || []), ...missing];
+                                    const timeDisplay = event.start ? (event.end ? `${event.start} – ${event.end}` : event.start) : null;
+
+                                    return (
+                                        <div key={eventId} onClick={(e) => { 
+                                            if (e.target.closest('.apply-form-container')) return;
+                                            toggleExpand(eventId); 
+                                        }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
+                                            <div className="p-5 flex flex-col">
+                                                <div className="space-y-1 w-full">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
+                                                        <span className="shrink-0">{formatDate(event.date)}</span>
+                                                        {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
+                                                    </div>
+                                                    
+                                                    <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
+                                                    
+                                                    {!isExpanded && (
+                                                        <div className="space-y-2 mt-1 flex flex-col items-end">
+                                                            <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
+                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2] justify-end">
+                                                                {hasUrgentVacancies ? (
+                                                                    <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
+                                                                ) : (
+                                                                    <><span>ПЕРСОНАЛ</span><span>НАБРАН</span></>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
+                                                <div className="px-5 pb-6">
+                                                    <div className="flex items-center gap-2 text-white/90 text-[14px] mb-5 bg-black/20 px-3 py-2 rounded-xl inline-flex max-w-full">
+                                                        <div className="w-6 h-6 rounded-md bg-transparent flex items-center justify-center shrink-0">
+                                                            <img src="location.png" alt="Loc" className="w-6 h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📍'; }} />
+                                                        </div>
+                                                        <span className="truncate font-medium">{event.location}</span>
+                                                    </div>
+
+                                                    <div className="space-y-2.5 border-t border-white/10 pt-5">
+                                                        <div className="text-[10px] uppercase font-black text-white tracking-[0.2em] mb-1">Состав команды</div>
+                                                        {allStaff.map((person, pIdx) => {
+                                                            const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
+                                                            const isSearchedStaff = staffSearch && !person.isPlaceholder && person.name && person.name.toLowerCase().includes(staffSearch.toLowerCase().trim());
+
+                                                            return (
+                                                                <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${isSearchedStaff ? 'bg-brand-accent/20 border-brand-accent shadow-[inset_0_0_10px_rgba(255,238,210,0.1)]' : person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <div className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden">{getRoleIcon(currentRole, person.isPlaceholder)}</div>
+                                                                        <div className="overflow-hidden">
+                                                                            <div className={`text-[14px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : isSearchedStaff ? 'text-brand-accent font-bold' : 'text-white'}`}>{person.isPlaceholder ? 'Вакансия открыта' : person.name}</div>
+                                                                            <div className="text-[11px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    {!person.isPlaceholder ? (
+                                                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
+                                                                            <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
+                                                                        </div>
+                                                                    ) : <div className="p-1.5 text-white/20 animate-pulse">{renderIcon('UserPlus', 18, "text-white/40")}</div>}
+                                                                </div>
+                                                            );
+                                                        })}
+
+                                                        {missing.length > 0 && (
+                                                            <div className="mt-6 pt-4 border-t border-white/5 apply-form-container">
+                                                                {!applyingFor ? (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
+                                                                        className="w-full py-4 bg-[#FFEED2] hover:bg-[#F5E2C2] text-black rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                                                                    >
+                                                                        {renderIcon('CheckCircle2', 20, "text-black")} М О Г У
+                                                                    </button>
+                                                                ) : applyingFor === eventId && (
+                                                                    <div className="bg-black/30 p-5 rounded-[20px] border border-red-500/30 space-y-4 fade-in">
+                                                                        <div className="text-center mb-2">
+                                                                            <span className="text-[11px] font-bold text-[#FFEED2] uppercase tracking-widest">Подать заявку</span>
+                                                                        </div>
+                                                                        
+                                                                        {submitStatus === 'success' ? (
+                                                                            <div className="py-4 text-center text-green-400 font-bold flex flex-col items-center gap-2">
+                                                                                {renderIcon('PartyPopper', 24)}
+                                                                                Заявка успешно отправлена!
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                <div className="space-y-3">
+                                                                                    <div className="relative">
+                                                                                        <input 
+                                                                                            type="text" 
+                                                                                            placeholder="фамилия" 
+                                                                                            value={applyName}
+                                                                                            onChange={e => handleNameInput(e.target.value)}
+                                                                                            onFocus={() => setShowApplyAutocomplete(true)}
+                                                                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-accent outline-none"
+                                                                                        />
+                                                                                        {showApplyAutocomplete && applyAutocompleteOptions.length > 0 && (
+                                                                                            <div className="apply-autocomplete">
+                                                                                                {applyAutocompleteOptions.map((staff, i) => (
+                                                                                                    <div 
+                                                                                                        key={i} 
+                                                                                                        onClick={() => handleSelectStaff(staff)}
+                                                                                                        className="px-4 py-2 text-xs border-b border-white/5 last:border-0 hover:bg-brand-accent hover:text-brand-dark cursor-pointer transition-colors"
+                                                                                                    >
+                                                                                                        {staff.name}
+                                                                                                    </div>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="relative">
+                                                                                        <input 
+                                                                                            type="tel" 
+                                                                                            placeholder="номер телефона (8... или 9...)" 
+                                                                                            value={applyPhone}
+                                                                                            onChange={e => handlePhoneInput(e.target.value)}
+                                                                                            className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-colors ${isPhoneAutoFilled ? 'border-brand-accent text-brand-accent' : 'border-white/10 focus:border-brand-accent'}`}
+                                                                                        />
+                                                                                        {isPhoneValid && (
+                                                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                                                                {renderIcon('Check', 14, "text-brand-accent")}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                
+                                                                                <div className="flex gap-2">
+                                                                                    <button 
+                                                                                        onClick={() => {
+                                                                                            setApplyingFor(null);
+                                                                                            setShowApplyAutocomplete(false);
+                                                                                        }}
+                                                                                        className="px-4 py-3 bg-white/5 text-white/50 rounded-xl font-bold text-xs uppercase"
+                                                                                    >
+                                                                                        Отмена
+                                                                                    </button>
+                                                                                    <button 
+                                                                                        onClick={() => handleSendApplication(event)}
+                                                                                        disabled={isSubmitting || !isFormValid}
+                                                                                        className="flex-1 py-3 bg-brand-accent text-brand-dark rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30"
+                                                                                    >
+                                                                                        {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon('Send', 14, "text-brand-dark")}
+                                                                                        Отправить
+                                                                                    </button>
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
