@@ -1,6 +1,6 @@
 {
   "appId": "com.vn.catering",
   "appName": "Кейтеринг ВН",
-  "webDir": "www",
+  "webDir": ".",
   "bundledWebRuntime": false
 }
