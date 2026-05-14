@@ -2,8 +2,8 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ] # Сборка запускается при каждом пуше в ветку main
-  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в Actions
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,23 +20,27 @@ jobs:
       - name: Install Dependencies
         run: |
           npm install
-          npm install @capacitor/android @capacitor/cli @capacitor/core
+          npm install @capacitor/android @capacitor/cli @capacitor/core @capacitor/assets
 
       - name: Prepare Web Assets
         run: |
-          # Создаем папку www, которую требует Capacitor
           mkdir -p www
-          # Копируем ваш HTML файл
           cp index.html www/
-          # Копируем все изображения и иконки (если они есть в корне)
           cp *.png www/ 2>/dev/null || true
           cp *.ico www/ 2>/dev/null || true
-          cp *.jpg www/ 2>/dev/null || true
+          
+          # Создаем структуру для генератора ресурсов
+          mkdir -p assets
+          # Используем ваш icon.png как основной источник
+          cp icon.png assets/icon-only.png
+          cp icon.png assets/icon-foreground.png
+          cp icon.png assets/icon-background.png
 
       - name: Build Capacitor Project
         run: |
-          # Инициализируем андроид-проект и синхронизируем ресурсы из папки www
           npx cap add android
+          # Генерируем иконки до синхронизации
+          npx capacitor-assets generate --android
           npx cap copy android
           npx cap sync android
 
@@ -50,11 +54,10 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          # Собираем дебаг-версию APK
           ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vn-catering-debug-apk
+          name: vn-catering-with-icon
           path: android/app/build/outputs/apk/debug/app-debug.apk
