@@ -29,7 +29,7 @@
         }
     </script>
     
-    <!-- Подключение нативного моста Capacitor (Критически важно для Android) -->
+    <!-- Подключение нативного моста Capacitor для связи с Android -->
     <script src="capacitor.js"></script>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -144,7 +144,6 @@
                     return value ? JSON.parse(value) : fallback;
                 } catch (e) { return fallback; }
             } else {
-                // Запасной вариант для тестирования в обычном браузере на ПК
                 try {
                     const localVal = localStorage.getItem(key);
                     return localVal ? JSON.parse(localVal) : fallback;
@@ -153,11 +152,12 @@
         };
 
         const setDBValue = async (key, value) => {
-            const storage = getCapacitorStorage();
+            const storage = getCapacStorage();
             const stringified = JSON.stringify(value);
-            if (storage) {
+            const storageObj = getCapacitorStorage();
+            if (storageObj) {
                 try {
-                    await storage.set({ key: key, value: stringified });
+                    await storageObj.set({ key: key, value: stringified });
                 } catch (e) {}
             } else {
                 try {
@@ -305,6 +305,10 @@
             const fetchInitialData = async () => {
                 setLoading(true);
                 
+                // Проверяем статус плагина
+                const isNativePluginLoaded = !!window.Capacitor?.Plugins?.Preferences;
+                const storageType = isNativePluginLoaded ? "НАТИВНЫЙ ПЛАГИН (ОК)" : "БРАУЗЕР (ДАННЫЕ СЛЕТЯТ)";
+                
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 4000);
 
@@ -336,12 +340,11 @@
                     await setDBValue('vn_time', timeStr);
 
                     setIsOffline(false);
-                    setError(loadedEvents.length === 0 ? "Актуальных вакансий не найдено." : null);
+                    setError(`Память: ${storageType}`);
 
                 } catch (err) {
                     clearTimeout(timeoutId);
                     
-                    // Загрузка кэша из нативной памяти устройства при сбоях сети
                     try {
                         const cachedEvents = await getDBValue('vn_events', null);
                         const cachedStaff = await getDBValue('vn_staff', null);
@@ -350,10 +353,10 @@
                         if (cachedEvents) {
                             processAndSetEvents(cachedEvents);
                             setIsOffline(true);
-                            setError("Офлайн режим. Данные считаны из памяти устройства.");
+                            setError(`Офлайн. Реестр: ${storageType}`);
                             if (cachedTime) setLastUpdated(cachedTime);
                         } else {
-                            setError("Приложение запущено офлайн впервые. Нужен интернет.");
+                            setError(`Офлайн. Кэш пуст. Реестр: ${storageType}`);
                         }
 
                         if (cachedStaff) {
@@ -552,8 +555,8 @@
                         </div>
 
                         {error && (
-                            <div className={`mb-4 p-4 rounded-xl text-[13px] flex items-center gap-2.5 border fade-in ${isOffline ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-white/5 border-white/10 text-white'}`}>
-                                {renderIcon(isOffline ? 'WifiOff' : 'Info', 14, isOffline ? "text-amber-400" : "text-brand-accent")} 
+                            <div className={`mb-4 p-4 rounded-xl text-[13px] flex items-center gap-2.5 border fade-in bg-white/5 border-white/10 text-white`}>
+                                {renderIcon('Info', 14, "text-brand-accent")} 
                                 <span>{error}</span>
                             </div>
                         )}
