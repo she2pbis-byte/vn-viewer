@@ -4,7 +4,8 @@
   "description": "Приложение управления персоналом кейтеринга Ванильное Небо",
   "main": "index.html",
   "scripts": {
-    "build": "echo 'No build step required for static single-file app'"
+    "build": "echo 'No build step required'",
+    "capacitor-sync": "npx cap sync android"
   },
   "keywords": [],
   "author": "",
