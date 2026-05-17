@@ -1,11 +1,20 @@
 {
   "name": "vn-catering-app",
   "version": "1.0.0",
-  "description": "Catering VN Mobile App",
+  "description": "Приложение управления персоналом кейтеринга Ванильное Небо",
   "main": "index.html",
+  "scripts": {
+    "build": "echo 'No build step required for static single-file app'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/preferences": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
   }
 }
