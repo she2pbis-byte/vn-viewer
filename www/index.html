@@ -29,6 +29,9 @@
         }
     </script>
     
+    <!-- Подключение нативного моста Capacitor (Критически важно для Android) -->
+    <script src="capacitor.js"></script>
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -128,41 +131,41 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
-        // --- ИНИЦИАЛИЗАЦИЯ И ОБЕРТКА ДЛЯ INDEXED DB ---
-        const initDB = () => {
-            return new Promise((resolve) => {
-                const request = indexedDB.open("VNCateringDB", 1);
-                request.onupgradeneeded = (e) => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains("cache")) {
-                        db.createObjectStore("cache");
-                    }
-                };
-                request.onsuccess = (e) => resolve(e.target.result);
-                request.onerror = () => resolve(null);
-            });
+        // --- ИНТЕГРАЦИЯ С НАДЁЖНЫМ ХРАНИЛИЩЕМ CAPACITOR PREFERENCES ---
+        const getCapacitorStorage = () => {
+            return window.Capacitor?.Plugins?.Preferences || window.Capacitor?.Plugins?.Storage;
         };
 
         const getDBValue = async (key, fallback) => {
-            const db = await initDB();
-            if (!db) return fallback;
-            return new Promise((resolve) => {
-                const transaction = db.transaction("cache", "readonly");
-                const store = transaction.objectStore("cache");
-                const request = store.get(key);
-                request.onsuccess = () => resolve(request.result !== undefined ? request.result : fallback);
-                request.onerror = () => resolve(fallback);
-            });
+            const storage = getCapacitorStorage();
+            if (storage) {
+                try {
+                    const { value } = await storage.get({ key: key });
+                    return value ? JSON.parse(value) : fallback;
+                } catch (e) { return fallback; }
+            } else {
+                // Запасной вариант для тестирования в обычном браузере на ПК
+                try {
+                    const localVal = localStorage.getItem(key);
+                    return localVal ? JSON.parse(localVal) : fallback;
+                } catch (e) { return fallback; }
+            }
         };
 
         const setDBValue = async (key, value) => {
-            const db = await initDB();
-            if (!db) return;
-            const transaction = db.transaction("cache", "readwrite");
-            const store = transaction.objectStore("cache");
-            store.put(value, key);
+            const storage = getCapacitorStorage();
+            const stringified = JSON.stringify(value);
+            if (storage) {
+                try {
+                    await storage.set({ key: key, value: stringified });
+                } catch (e) {}
+            } else {
+                try {
+                    localStorage.setItem(key, stringified);
+                } catch (e) {}
+            }
         };
-        // --------------------------------------------------------
+        // ------------------------------------------------------------------
 
         const App = () => {
             const [events, setEvents] = useState([]);
@@ -193,7 +196,6 @@
                 return lucide.icons || lucide;
             }, []);
 
-            // Использование CORS-прокси для предотвращения блокировок со стороны WebView Android
             const EVENTS_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
             const STAFF_DB_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
             const REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -339,7 +341,7 @@
                 } catch (err) {
                     clearTimeout(timeoutId);
                     
-                    // Аварийное чтение из долгосрочной базы IndexedDB при сбоях сети
+                    // Загрузка кэша из нативной памяти устройства при сбоях сети
                     try {
                         const cachedEvents = await getDBValue('vn_events', null);
                         const cachedStaff = await getDBValue('vn_staff', null);
@@ -366,7 +368,6 @@
                 }
             };
 
-            // При запуске приложения — сначала читаем сохраненный кэш, затем запрашиваем сеть
             useEffect(() => {
                 const loadFromDeviceMemoryFirst = async () => {
                     try {
