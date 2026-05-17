@@ -29,9 +29,6 @@
         }
     </script>
     
-    <!-- Подключение нативного моста Capacitor для связи с Android -->
-    <script src="capacitor.js"></script>
-    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -131,50 +128,12 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
-        // --- ИНТЕГРАЦИЯ С НАДЁЖНЫМ ХРАНИЛИЩЕМ CAPACITOR PREFERENCES ---
-        const getCapacitorStorage = () => {
-            return window.Capacitor?.Plugins?.Preferences || window.Capacitor?.Plugins?.Storage;
-        };
-
-        const getDBValue = async (key, fallback) => {
-            const storage = getCapacitorStorage();
-            if (storage) {
-                try {
-                    const { value } = await storage.get({ key: key });
-                    return value ? JSON.parse(value) : fallback;
-                } catch (e) { return fallback; }
-            } else {
-                try {
-                    const localVal = localStorage.getItem(key);
-                    return localVal ? JSON.parse(localVal) : fallback;
-                } catch (e) { return fallback; }
-            }
-        };
-
-        const setDBValue = async (key, value) => {
-            const storage = getCapacStorage();
-            const stringified = JSON.stringify(value);
-            const storageObj = getCapacitorStorage();
-            if (storageObj) {
-                try {
-                    await storageObj.set({ key: key, value: stringified });
-                } catch (e) {}
-            } else {
-                try {
-                    localStorage.setItem(key, stringified);
-                } catch (e) {}
-            }
-        };
-        // ------------------------------------------------------------------
-
         const App = () => {
             const [events, setEvents] = useState([]);
             const [staffDatabase, setStaffDatabase] = useState([]);
-            
             const [loading, setLoading] = useState(false);
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
-            const [isOffline, setIsOffline] = useState(false);
             const [lastUpdated, setLastUpdated] = useState(null);
             const [expandedEventId, setExpandedEventId] = useState(null);
             const [filter, setFilter] = useState('ALL');
@@ -196,8 +155,8 @@
                 return lucide.icons || lucide;
             }, []);
 
-            const EVENTS_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
-            const STAFF_DB_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
+            const EVENTS_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+            const STAFF_DB_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
             const REFRESH_INTERVAL = 10 * 60 * 1000;
 
             const renderIcon = (iconName, size = 18, className = "text-white") => {
@@ -278,7 +237,7 @@
             };
 
             const processAndSetEvents = useCallback((data) => {
-                if (!data) return [];
+                if (!data) return;
                 const rawEvents = Array.isArray(data) ? data : [data];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -299,72 +258,30 @@
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 setEvents(processedEvents);
-                return processedEvents;
+                setLastUpdated(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                if (processedEvents.length === 0) setError("Актуальных вакансий не найдено.");
+                else setError(null);
             }, []);
 
             const fetchInitialData = async () => {
                 setLoading(true);
-                
-                // Проверяем статус плагина
-                const isNativePluginLoaded = !!window.Capacitor?.Plugins?.Preferences;
-                const storageType = isNativePluginLoaded ? "НАТИВНЫЙ ПЛАГИН (ОК)" : "БРАУЗЕР (ДАННЫЕ СЛЕТЯТ)";
-                
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000);
-
                 try {
                     const [eventsRes, staffRes] = await Promise.all([
-                        fetch(`${EVENTS_URL}&t=${Date.now()}`, { signal: controller.signal }),
-                        fetch(`${STAFF_DB_URL}&t=${Date.now()}`, { signal: controller.signal })
+                        fetch(`${EVENTS_URL}?t=${Date.now()}`),
+                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
                     ]);
                     
-                    clearTimeout(timeoutId);
-                    
-                    let loadedEvents = [];
-
                     if (eventsRes.ok) {
                         const eventsData = await eventsRes.json();
-                        loadedEvents = processAndSetEvents(eventsData);
-                        await setDBValue('vn_events', eventsData);
+                        processAndSetEvents(eventsData);
                     }
                     
                     if (staffRes.ok) {
                         const staffData = await staffRes.json();
-                        const parsedStaff = Array.isArray(staffData) ? staffData : [];
-                        setStaffDatabase(parsedStaff);
-                        await setDBValue('vn_staff', parsedStaff);
+                        setStaffDatabase(Array.isArray(staffData) ? staffData : []);
                     }
-
-                    const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                    setLastUpdated(timeStr);
-                    await setDBValue('vn_time', timeStr);
-
-                    setIsOffline(false);
-                    setError(`Память: ${storageType}`);
-
                 } catch (err) {
-                    clearTimeout(timeoutId);
-                    
-                    try {
-                        const cachedEvents = await getDBValue('vn_events', null);
-                        const cachedStaff = await getDBValue('vn_staff', null);
-                        const cachedTime = await getDBValue('vn_time', null);
-
-                        if (cachedEvents) {
-                            processAndSetEvents(cachedEvents);
-                            setIsOffline(true);
-                            setError(`Офлайн. Реестр: ${storageType}`);
-                            if (cachedTime) setLastUpdated(cachedTime);
-                        } else {
-                            setError(`Офлайн. Кэш пуст. Реестр: ${storageType}`);
-                        }
-
-                        if (cachedStaff) {
-                            setStaffDatabase(cachedStaff);
-                        }
-                    } catch (cacheErr) {
-                        setError("Ошибка извлечения данных из памяти.");
-                    }
+                    setError("Не удалось загрузить данные.");
                 } finally {
                     setLoading(false);
                     setIsInitialLoad(false);
@@ -372,22 +289,7 @@
             };
 
             useEffect(() => {
-                const loadFromDeviceMemoryFirst = async () => {
-                    try {
-                        const cachedEvents = await getDBValue('vn_events', null);
-                        const cachedStaff = await getDBValue('vn_staff', null);
-                        const cachedTime = await getDBValue('vn_time', null);
-                        
-                        if (cachedEvents) processAndSetEvents(cachedEvents);
-                        if (cachedStaff) setStaffDatabase(cachedStaff);
-                        if (cachedTime) setLastUpdated(cachedTime);
-                    } catch(e) {}
-                    
-                    fetchInitialData();
-                };
-
-                loadFromDeviceMemoryFirst();
-
+                fetchInitialData();
                 const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
                 
                 const handleClickOutside = (event) => {
@@ -477,7 +379,7 @@
             };
 
             const handleSendApplication = async (event) => {
-                if (!isFormValid || isOffline) return;
+                if (!isFormValid) return;
 
                 setIsSubmitting(true);
                 const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${applyName.trim()}\n📞 Телефон: ${applyPhone}`;
@@ -554,14 +456,9 @@
                             )}
                         </div>
 
-                        {error && (
-                            <div className={`mb-4 p-4 rounded-xl text-[13px] flex items-center gap-2.5 border fade-in bg-white/5 border-white/10 text-white`}>
-                                {renderIcon('Info', 14, "text-brand-accent")} 
-                                <span>{error}</span>
-                            </div>
-                        )}
+                        {error && !loading && <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('Info', 14, "text-brand-accent")} {error}</div>}
 
-                        {isInitialLoad && loading && events.length === 0 ? (
+                        {isInitialLoad && loading ? (
                             <div className="flex flex-col items-center justify-center py-20 opacity-40">
                                 <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
                                 <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
@@ -643,7 +540,7 @@
                                                                 {!applyingFor ? (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
-                                                                        className="w-full py-4 text-black bg-[#FFEED2] hover:bg-[#F5E2C2] rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                                                                        className="w-full py-4 bg-[#FFEED2] hover:bg-[#F5E2C2] text-black rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                                                                     >
                                                                         {renderIcon('CheckCircle2', 20, "text-black")} М О Г У
                                                                     </button>
@@ -712,11 +609,11 @@
                                                                                     </button>
                                                                                     <button 
                                                                                         onClick={() => handleSendApplication(event)}
-                                                                                        disabled={isSubmitting || !isFormValid || isOffline}
+                                                                                        disabled={isSubmitting || !isFormValid}
                                                                                         className="flex-1 py-3 bg-brand-accent text-brand-dark rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30"
                                                                                     >
-                                                                                        {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon(isOffline ? 'WifiOff' : 'Send', 14, "text-brand-dark")}
-                                                                                        {isOffline ? 'Нет сети' : 'Отправить'}
+                                                                                        {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon('Send', 14, "text-brand-dark")}
+                                                                                        Отправить
                                                                                     </button>
                                                                                 </div>
                                                                             </>
