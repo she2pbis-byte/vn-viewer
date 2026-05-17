@@ -128,26 +128,51 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
-        // Безопасное чтение кэша при самом старте приложения (до рендера)
-        const getInitialCache = (key, fallback) => {
-            try {
-                const saved = localStorage.getItem(key);
-                return saved ? JSON.parse(saved) : fallback;
-            } catch (e) {
-                return fallback;
-            }
+        // --- ОБЕРТКА ДЛЯ ЖЕЛЕЗОБЕТОННОГО ХРАНИЛИЩА INDEXED DB ---
+        const initDB = () => {
+            return new Promise((resolve) => {
+                const request = indexedDB.open("VNCateringDB", 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains("cache")) {
+                        db.createObjectStore("cache");
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = () => resolve(null);
+            });
         };
 
+        const getDBValue = async (key, fallback) => {
+            const db = await initDB();
+            if (!db) return fallback;
+            return new Promise((resolve) => {
+                const transaction = db.transaction("cache", "readonly");
+                const store = transaction.objectStore("cache");
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result !== undefined ? request.result : fallback);
+                request.onerror = () => resolve(fallback);
+            });
+        };
+
+        const setDBValue = async (key, value) => {
+            const db = await initDB();
+            if (!db) return;
+            const transaction = db.transaction("cache", "readwrite");
+            const store = transaction.objectStore("cache");
+            store.put(value, key);
+        };
+        // --------------------------------------------------------
+
         const App = () => {
-            // Инициализируем состояния сразу данными из кэша, чтобы приложение не было пустым при старте офлайн
-            const [events, setEvents] = useState(() => getInitialCache('vn_events', []));
-            const [staffDatabase, setStaffDatabase] = useState(() => getInitialCache('vn_staff', []));
+            const [events, setEvents] = useState([]);
+            const [staffDatabase, setStaffDatabase] = useState([]);
             
             const [loading, setLoading] = useState(false);
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
             const [isOffline, setIsOffline] = useState(false);
-            const [lastUpdated, setLastUpdated] = useState(() => localStorage.getItem('vn_time') || null);
+            const [lastUpdated, setLastUpdated] = useState(null);
             const [expandedEventId, setExpandedEventId] = useState(null);
             const [filter, setFilter] = useState('ALL');
             
@@ -277,7 +302,6 @@
             const fetchInitialData = async () => {
                 setLoading(true);
                 
-                // Таймаут для сетевого запроса: если сеть "висит" дольше 4 секунд, падаем в catch и берем кэш
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 4000);
 
@@ -290,25 +314,23 @@
                     clearTimeout(timeoutId);
                     
                     let loadedEvents = [];
-                    let loadedStaff = [];
 
                     if (eventsRes.ok) {
                         const eventsData = await eventsRes.json();
                         loadedEvents = processAndSetEvents(eventsData);
-                        // Записываем чистый JSON напрямую в локальное хранилище APK
-                        localStorage.setItem('vn_events', JSON.stringify(eventsData));
+                        await setDBValue('vn_events', eventsData);
                     }
                     
                     if (staffRes.ok) {
                         const staffData = await staffRes.json();
-                        loadedStaff = Array.isArray(staffData) ? staffData : [];
-                        setStaffDatabase(loadedStaff);
-                        localStorage.setItem('vn_staff', JSON.stringify(loadedStaff));
+                        const parsedStaff = Array.isArray(staffData) ? staffData : [];
+                        setStaffDatabase(parsedStaff);
+                        await setDBValue('vn_staff', parsedStaff);
                     }
 
                     const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                     setLastUpdated(timeStr);
-                    localStorage.setItem('vn_time', timeStr);
+                    await setDBValue('vn_time', timeStr);
 
                     setIsOffline(false);
                     setError(loadedEvents.length === 0 ? "Актуальных вакансий не найдено." : null);
@@ -316,26 +338,26 @@
                 } catch (err) {
                     clearTimeout(timeoutId);
                     
-                    // ЕСЛИ СЕТЬ СБОИТ: Извлекаем аварийно из кэша
+                    // ЕСЛИ СЕТИ НЕТ ИЛИ ПРИЛОЖЕНИЕ СБРОШЕНО — достаем из неубиваемой IndexedDB
                     try {
-                        const cachedEvents = localStorage.getItem('vn_events');
-                        const cachedStaff = localStorage.getItem('vn_staff');
-                        const cachedTime = localStorage.getItem('vn_time');
+                        const cachedEvents = await getDBValue('vn_events', null);
+                        const cachedStaff = await getDBValue('vn_staff', null);
+                        const cachedTime = await getDBValue('vn_time', null);
 
                         if (cachedEvents) {
-                            processAndSetEvents(JSON.parse(cachedEvents));
+                            processAndSetEvents(cachedEvents);
                             setIsOffline(true);
-                            setError("Офлайн режим. Данные из памяти телефона.");
+                            setError("Офлайн режим. Данные считаны из памяти устройства.");
                             if (cachedTime) setLastUpdated(cachedTime);
                         } else {
-                            setError("Не удалось загрузить данные. Проверьте интернет.");
+                            setError("Приложение запущено офлайн впервые. Нужен интернет.");
                         }
 
                         if (cachedStaff) {
-                            setStaffDatabase(JSON.parse(cachedStaff));
+                            setStaffDatabase(cachedStaff);
                         }
                     } catch (cacheErr) {
-                        setError("Ошибка сети. Данные недоступны.");
+                        setError("Ошибка извлечения данных из памяти.");
                     }
                 } finally {
                     setLoading(false);
@@ -343,8 +365,25 @@
                 }
             };
 
+            // Самая первая загрузка при старте — сначала проверяем кэш базы данных на случай отсутствия сети
             useEffect(() => {
-                fetchInitialData();
+                const loadFromDeviceMemoryFirst = async () => {
+                    try {
+                        const cachedEvents = await getDBValue('vn_events', null);
+                        const cachedStaff = await getDBValue('vn_staff', null);
+                        const cachedTime = await getDBValue('vn_time', null);
+                        
+                        if (cachedEvents) processAndSetEvents(cachedEvents);
+                        if (cachedStaff) setStaffDatabase(cachedStaff);
+                        if (cachedTime) setLastUpdated(cachedTime);
+                    } catch(e) {}
+                    
+                    // Сразу после попытки прочесть кэш — идём проверять сеть
+                    fetchInitialData();
+                };
+
+                loadFromDeviceMemoryFirst();
+
                 const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
                 
                 const handleClickOutside = (event) => {
@@ -463,7 +502,7 @@
                     }
                 } catch (e) {
                     setSubmitStatus('error');
-                } private_finally: {
+                } finally {
                     setIsSubmitting(false);
                 }
             };
@@ -600,10 +639,9 @@
                                                                 {!applyingFor ? (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
-                                                                        disabled={isOffline}
-                                                                        className={`w-full py-4 text-black rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all ${isOffline ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5' : 'bg-[#FFEED2] hover:bg-[#F5E2C2] active:scale-[0.98]'}`}
+                                                                        className="w-full py-4 text-black bg-[#FFEED2] hover:bg-[#F5E2C2] rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
                                                                     >
-                                                                        {renderIcon(isOffline ? 'WifiOff' : 'CheckCircle2', 20, isOffline ? "text-white/30" : "text-black")} {isOffline ? 'Офлайн режим' : 'М О Г У'}
+                                                                        {renderIcon('CheckCircle2', 20, "text-black")} М О Г У
                                                                     </button>
                                                                 ) : applyingFor === eventId && (
                                                                     <div className="bg-black/30 p-5 rounded-[20px] border border-red-500/30 space-y-4 fade-in">
@@ -680,7 +718,7 @@
                                                                             </>
                                                                         )}
                                                                     </div>
-                                                                )}
+                                                                              )}
                                                             </div>
                                                         )}
                                                     </div>
