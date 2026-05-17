@@ -2,5 +2,14 @@
   "appId": "com.vn.catering",
   "appName": "Кейтеринг ВН",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Preferences": {
+      "group": "VNCateringStorage"
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#1F1713"
+  }
 }
