@@ -128,7 +128,7 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
-        // --- ОБЕРТКА ДЛЯ ЖЕЛЕЗОБЕТОННОГО ХРАНИЛИЩА INDEXED DB ---
+        // --- ИНИЦИАЛИЗАЦИЯ И ОБЕРТКА ДЛЯ INDEXED DB ---
         const initDB = () => {
             return new Promise((resolve) => {
                 const request = indexedDB.open("VNCateringDB", 1);
@@ -193,8 +193,9 @@
                 return lucide.icons || lucide;
             }, []);
 
-            const EVENTS_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
-            const STAFF_DB_URL = "https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
+            // Использование CORS-прокси для предотвращения блокировок со стороны WebView Android
+            const EVENTS_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/events_data.json";
+            const STAFF_DB_URL = "https://corsproxy.io/?https://raw.githubusercontent.com/she2pbis-byte/vn/main/staff_database.json";
             const REFRESH_INTERVAL = 10 * 60 * 1000;
 
             const renderIcon = (iconName, size = 18, className = "text-white") => {
@@ -307,8 +308,8 @@
 
                 try {
                     const [eventsRes, staffRes] = await Promise.all([
-                        fetch(`${EVENTS_URL}?t=${Date.now()}`, { signal: controller.signal }),
-                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`, { signal: controller.signal })
+                        fetch(`${EVENTS_URL}&t=${Date.now()}`, { signal: controller.signal }),
+                        fetch(`${STAFF_DB_URL}&t=${Date.now()}`, { signal: controller.signal })
                     ]);
                     
                     clearTimeout(timeoutId);
@@ -338,7 +339,7 @@
                 } catch (err) {
                     clearTimeout(timeoutId);
                     
-                    // ЕСЛИ СЕТИ НЕТ ИЛИ ПРИЛОЖЕНИЕ СБРОШЕНО — достаем из неубиваемой IndexedDB
+                    // Аварийное чтение из долгосрочной базы IndexedDB при сбоях сети
                     try {
                         const cachedEvents = await getDBValue('vn_events', null);
                         const cachedStaff = await getDBValue('vn_staff', null);
@@ -365,7 +366,7 @@
                 }
             };
 
-            // Самая первая загрузка при старте — сначала проверяем кэш базы данных на случай отсутствия сети
+            // При запуске приложения — сначала читаем сохраненный кэш, затем запрашиваем сеть
             useEffect(() => {
                 const loadFromDeviceMemoryFirst = async () => {
                     try {
@@ -378,7 +379,6 @@
                         if (cachedTime) setLastUpdated(cachedTime);
                     } catch(e) {}
                     
-                    // Сразу после попытки прочесть кэш — идём проверять сеть
                     fetchInitialData();
                 };
 
@@ -718,7 +718,7 @@
                                                                             </>
                                                                         )}
                                                                     </div>
-                                                                              )}
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
