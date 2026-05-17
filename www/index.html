@@ -66,29 +66,24 @@
         .role-icon-dark { filter: brightness(0.2); }
         .grayscale-img { filter: grayscale(1) opacity(0.3); }
 
-        .phone-icon-transparent {
-            mix-blend-mode: screen; 
-            filter: brightness(1.2) contrast(1.1);
-        }
-
         .content-transition {
             max-height: 0;
             opacity: 0;
             overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in;
+            transition: max-height 0.4s ease-out, opacity 0.3s ease-in;
         }
         .content-transition.expanded {
-            max-height: 4000px;
+            max-height: 3500px;
             opacity: 1;
         }
 
         @keyframes pulse-red-border {
             0% { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
-            50% { border-color: rgba(255, 0, 0, 1); box-shadow: 0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 5px rgba(255, 0, 0, 0.2); }
+            50% { border-color: rgba(255, 0, 0, 1); box-shadow: 0 0 20px rgba(255, 0, 0, 0.6), inset 0 0 10px rgba(255, 0, 0, 0.3); }
             100% { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 5px rgba(255, 0, 0, 0.2); }
         }
         .urgent-vacancy-border {
-            animation: pulse-red-border 2s infinite ease-in-out;
+            animation: pulse-red-border 1.5s infinite ease-in-out;
             border: 2px solid red !important;
         }
 
@@ -122,14 +117,6 @@
             max-height: 150px;
             overflow-y: auto;
         }
-        
-        .divider-pipe {
-            font-weight: 300;
-            font-size: 0.9em;
-            opacity: 0.3;
-            margin: 0 0.5rem;
-            color: #FFFFFF;
-        }
     </style>
 </head>
 <body>
@@ -141,14 +128,6 @@
         const TG_TOKEN = "8731971251:AAHarFjvqnMYzGwIPqLAvsF36qygPGd5OrQ";
         const TG_CHAT_ID = "7016844853";
 
-        const ADMIN_PHONES = {
-            "Илья": "+79051365031",
-            "Михаил": "+79605424065",
-            "Александр": "+79806586049",
-            "Светлана": "+79038201110",
-            "ИВ": "+79066336763"
-        };
-
         const App = () => {
             const [events, setEvents] = useState([]);
             const [staffDatabase, setStaffDatabase] = useState([]);
@@ -156,11 +135,11 @@
             const [isInitialLoad, setIsInitialLoad] = useState(true);
             const [error, setError] = useState(null);
             const [lastUpdated, setLastUpdated] = useState(null);
-            const [expandedEventIds, setExpandedEventIds] = useState([]);
+            const [expandedEventId, setExpandedEventId] = useState(null);
             const [filter, setFilter] = useState('ALL');
+            
             const [staffSearch, setStaffSearch] = useState('');
             const [showAutocomplete, setShowAutocomplete] = useState(false);
-            const [isOfflineData, setIsOfflineData] = useState(false); // Флаг работы с офлайн-кэшем
             const autocompleteRef = useRef(null);
 
             const [applyingFor, setApplyingFor] = useState(null);
@@ -186,34 +165,15 @@
                 return <IconComponent size={size} className={className} />;
             };
 
-            const openMap = (e, location) => {
-                e.stopPropagation();
-                if (!location) return;
-                const encodedLocation = encodeURIComponent(location);
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                if (isIOS) {
-                    window.location.href = `maps://maps.apple.com/?q=${encodedLocation}`;
-                } else {
-                    const geoUrl = `geo:0,0?q=${encodedLocation}`;
-                    window.location.href = geoUrl;
-                    setTimeout(() => {
-                        window.open(`https://www.google.com/maps/search/?api=1&query=${encodedLocation}`, '_blank');
-                    }, 500);
-                }
-            };
-
-            const toggleExpand = (e, id) => {
-                e.stopPropagation();
-                setExpandedEventIds(prev => 
-                    prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-                );
-                if (applyingFor === id && expandedEventIds.includes(id)) {
+            const toggleExpand = (id) => {
+                if (expandedEventId !== id) {
                     setApplyingFor(null);
                     setSubmitStatus(null);
                     setApplyName('');
                     setApplyPhone('');
                     setIsPhoneAutoFilled(false);
                 }
+                setExpandedEventId(prev => prev === id ? null : id);
             };
 
             const getRoleIcon = (roleName, isPlaceholder = false) => {
@@ -276,13 +236,13 @@
                 return missing;
             };
 
-            const processRawEvents = useCallback((rawEventsData) => {
-                if (!rawEventsData) return [];
-                const rawEvents = Array.isArray(rawEventsData) ? rawEventsData : [rawEventsData];
+            const processAndSetEvents = useCallback((data) => {
+                if (!data) return;
+                const rawEvents = Array.isArray(data) ? data : [data];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                return rawEvents
+                const processedEvents = rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
                         const eventDate = new Date(event.date);
@@ -296,105 +256,40 @@
                         _hasUrgent: getMissingStaff(event).some(m => m.roleKey === 'оф' || m.roleKey === 'бар')
                     }))
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
-            }, []);
 
-            const processAndSetEvents = useCallback((data) => {
-                if (!data) return;
-                const processedEvents = processRawEvents(data);
                 setEvents(processedEvents);
-                
-                const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                setLastUpdated(timeStr);
-                localStorage.setItem('vn_last_updated', timeStr);
-
+                setLastUpdated(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
                 if (processedEvents.length === 0) setError("Актуальных вакансий не найдено.");
                 else setError(null);
-            }, [processRawEvents]);
+            }, []);
 
             const fetchInitialData = async () => {
                 setLoading(true);
-                let eventsSuccess = false;
-                let staffSuccess = false;
-                let freshEvents = null;
-                let freshStaff = null;
-
                 try {
-                    const eventsRes = await fetch(`${EVENTS_URL}?t=${Date.now()}`);
+                    const [eventsRes, staffRes] = await Promise.all([
+                        fetch(`${EVENTS_URL}?t=${Date.now()}`),
+                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
+                    ]);
+                    
                     if (eventsRes.ok) {
-                        freshEvents = await eventsRes.json();
-                        eventsSuccess = true;
+                        const eventsData = await eventsRes.json();
+                        processAndSetEvents(eventsData);
                     }
-                } catch (err) {
-                    console.warn("Сетевой запрос событий завершился с ошибкой, используем кэш.");
-                }
-
-                try {
-                    const staffRes = await fetch(`${STAFF_DB_URL}?t=${Date.now()}`);
+                    
                     if (staffRes.ok) {
-                        freshStaff = await staffRes.json();
-                        staffSuccess = true;
+                        const staffData = await staffRes.json();
+                        setStaffDatabase(Array.isArray(staffData) ? staffData : []);
                     }
                 } catch (err) {
-                    console.warn("Сетевой запрос базы данных сотрудников завершился с ошибкой, используем кэш.");
+                    setError("Не удалось загрузить данные.");
+                } finally {
+                    setLoading(false);
+                    setIsInitialLoad(false);
                 }
-
-                if (eventsSuccess && freshEvents) {
-                    processAndSetEvents(freshEvents);
-                    localStorage.setItem('vn_events_cache', JSON.stringify(freshEvents));
-                    setIsOfflineData(false);
-                }
-                
-                if (staffSuccess && freshStaff) {
-                    const formattedStaff = Array.isArray(freshStaff) ? freshStaff : [];
-                    setStaffDatabase(formattedStaff);
-                    localStorage.setItem('vn_staff_cache', JSON.stringify(formattedStaff));
-                }
-
-                // Корректировка отображения ошибок и статуса сети
-                if (!eventsSuccess) {
-                    const cachedEvents = localStorage.getItem('vn_events_cache');
-                    if (cachedEvents) {
-                        setIsOfflineData(true);
-                        setError("Нет подключения к интернету. Отображаются сохраненные данные.");
-                    } else {
-                        setError("Не удалось загрузить данные и нет сохранённой копии.");
-                    }
-                } else {
-                    setError(null);
-                }
-
-                setLoading(false);
-                setIsInitialLoad(false);
             };
 
             useEffect(() => {
-                // Моментальная инициализация данных из localStorage до выполнения сетевого запроса
-                const cachedEvents = localStorage.getItem('vn_events_cache');
-                const cachedStaff = localStorage.getItem('vn_staff_cache');
-                const cachedTime = localStorage.getItem('vn_last_updated');
-
-                if (cachedEvents) {
-                    try {
-                        const parsedEvents = JSON.parse(cachedEvents);
-                        setEvents(processRawEvents(parsedEvents));
-                        setIsOfflineData(true); // Временно считаем офлайновыми, пока не пройдет успешный fetch
-                    } catch (e) {
-                        console.error("Ошибка парсинга кэша событий", e);
-                    }
-                }
-                if (cachedStaff) {
-                    try {
-                        setStaffDatabase(JSON.parse(cachedStaff));
-                    } catch (e) {
-                        console.error("Ошибка парсинга кэша сотрудников", e);
-                    }
-                }
-                if (cachedTime) {
-                    setLastUpdated(cachedTime);
-                }
-
                 fetchInitialData();
-
                 const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
                 
                 const handleClickOutside = (event) => {
@@ -402,7 +297,6 @@
                         setShowAutocomplete(false);
                     }
                 };
-                
                 document.addEventListener('mousedown', handleClickOutside);
                 return () => {
                     clearInterval(intervalId);
@@ -473,16 +367,6 @@
                 return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
             }, [applyPhone]);
 
-            const isAlreadyBookedForDate = (date, name) => {
-                if (!name || name.length < 2) return false;
-                const searchName = name.toLowerCase().trim();
-                return events.some(event => {
-                    const sameDate = event.date === date;
-                    const isStaff = event.staff && event.staff.some(p => p.name && p.name.toLowerCase().trim() === searchName);
-                    return sameDate && isStaff;
-                });
-            };
-
             const isFormValid = useMemo(() => {
                 return applyName.trim().length >= 2 && isPhoneValid;
             }, [applyName, isPhoneValid]);
@@ -494,24 +378,12 @@
                 setShowApplyAutocomplete(false);
             };
 
-            const handleAdminCall = (e, adminName) => {
-                e.stopPropagation();
-                const phone = ADMIN_PHONES[adminName];
-                if (phone) {
-                    window.location.href = `tel:${phone}`;
-                }
-            };
-
             const handleSendApplication = async (event) => {
                 if (!isFormValid) return;
-                
-                if (isAlreadyBookedForDate(event.date, applyName)) {
-                    setSubmitStatus('duplicate');
-                    return;
-                }
 
                 setIsSubmitting(true);
                 const message = `🚀 *НОВАЯ ЗАЯВКА*\n\n📅 Дата: ${formatDate(event.date)}\n🏢 Мероприятие: ${event.name}\n👤 Фамилия: ${applyName.trim()}\n📞 Телефон: ${applyPhone}`;
+                
                 try {
                     const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
                         method: 'POST',
@@ -541,8 +413,6 @@
                 }
             };
 
-            const Pipe = () => <span className="divider-pipe">|</span>;
-
             return (
                 <div className="min-h-screen p-4 font-sans antialiased bg-brand-dark text-white">
                     <div className="max-w-2xl mx-auto">
@@ -550,12 +420,7 @@
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Кейтеринг ВН</h1>
                                 <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
-                                        {isOfflineData && (
-                                            <span className="bg-red-600/20 text-red-400 text-[9px] px-1.5 py-0.5 rounded border border-red-500/30 uppercase font-black tracking-wider">офлайн</span>
-                                        )}
-                                    </div>
+                                    <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
                                     {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
                                 </div>
                             </div>
@@ -565,7 +430,7 @@
                         </header>
 
                         <div className="mb-3 flex gap-2">
-                            <button onClick={() => setFilter('ALL')} className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.1) ]' : 'bg-white/5 text-white/60 border-white/10'}`}>Все</button>
+                            <button onClick={() => setFilter('ALL')} className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'ALL' ? 'bg-brand-accent text-brand-dark border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.1)]' : 'bg-white/5 text-white/60 border-white/10'}`}>Все</button>
                             <button onClick={() => setFilter('VACANCY')} className={`flex-1 py-3 px-4 rounded-xl text-[11px] font-black tracking-[0.15em] transition-all uppercase border-[2px] ${filter === 'VACANCY' ? 'bg-red-600 text-white border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-white/5 text-white/60 border-white/10'}`}>Есть вакансия</button>
                         </div>
 
@@ -591,9 +456,9 @@
                             )}
                         </div>
 
-                        {error && <div className="mb-4 p-4 bg-red-950/20 border border-red-500/20 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('WifiOff', 14, "text-red-400")} {error}</div>}
+                        {error && !loading && <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('Info', 14, "text-brand-accent")} {error}</div>}
 
-                        {isInitialLoad && loading && events.length === 0 ? (
+                        {isInitialLoad && loading ? (
                             <div className="flex flex-col items-center justify-center py-20 opacity-40">
                                 <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
                                 <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
@@ -602,62 +467,30 @@
                             <div className="space-y-4">
                                 {filteredEvents.map((event, idx) => {
                                     const eventId = event.id || `event-${idx}`;
-                                    const isExpanded = expandedEventIds.includes(eventId);
+                                    const isExpanded = expandedEventId === eventId;
                                     const missing = getMissingStaff(event);
                                     const hasUrgentVacancies = event._hasUrgent;
                                     const allStaff = [...(event.staff || []), ...missing];
                                     const timeDisplay = event.start ? (event.end ? `${event.start} – ${event.end}` : event.start) : null;
-                                    const isBooked = isAlreadyBookedForDate(event.date, applyName);
-
-                                    const formatAndGuests = (
-                                        <>
-                                            {event.format}
-                                            {event.guests && <><Pipe />{event.guests} чел</>}
-                                        </>
-                                    );
 
                                     return (
-                                        <div key={eventId} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in transition-all relative ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
-                                            
-                                            <button 
-                                                onClick={(e) => toggleExpand(e, eventId)}
-                                                className={`absolute top-4 right-3 z-20 px-2 py-1 rounded-lg font-black text-[10px] uppercase tracking-[0.1em] border transition-all active:scale-95 flex items-center justify-center ${isExpanded ? 'bg-black/40 text-white/60 border-white/10' : 'bg-brand-accent text-brand-dark border-brand-accent shadow-sm'}`}
-                                            >
-                                                {isExpanded ? 'Закрыть' : 'Открыть'}
-                                            </button>
-
-                                            <div className="p-5 flex flex-col pr-20">
+                                        <div key={eventId} onClick={(e) => { 
+                                            if (e.target.closest('.apply-form-container')) return;
+                                            toggleExpand(eventId); 
+                                        }} className={`bg-brand-card rounded-[24px] border overflow-hidden shadow-2xl fade-in cursor-pointer active:brightness-95 transition-all ${hasUrgentVacancies ? 'urgent-vacancy-border' : 'border-white/10'}`} style={{animationDelay: `${idx * 0.05}s`}}>
+                                            <div className="p-5 flex flex-col">
                                                 <div className="space-y-1 w-full">
-                                                    <div className="flex flex-wrap items-baseline text-brand-accent font-bold text-xl leading-tight mb-2">
+                                                    <div className="flex items-baseline gap-2.5 text-brand-accent font-bold text-xl leading-tight mb-2">
                                                         <span className="shrink-0">{formatDate(event.date)}</span>
-                                                        {timeDisplay && (
-                                                            <>
-                                                                <Pipe />
-                                                                <span className="text-white/90 text-lg uppercase tracking-tight">{timeDisplay}</span>
-                                                            </>
-                                                        )}
+                                                        {timeDisplay && <><span className="text-white/40 font-light">|</span><span className="text-white/90">{timeDisplay}</span></>}
                                                     </div>
                                                     
-                                                    <h2 className={`text-lg font-bold transition-all mb-1 leading-snug flex flex-wrap items-center ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>
-                                                        {event.name}
-                                                        {isExpanded && (event.format || event.guests) && (
-                                                            <span className="text-white inline-flex items-center">
-                                                                <Pipe />
-                                                                {formatAndGuests}
-                                                            </span>
-                                                        )}
-                                                    </h2>
+                                                    <h2 className={`text-lg font-bold transition-all mb-2 ${isExpanded ? 'text-brand-accent' : 'text-white'}`}>{event.name}</h2>
                                                     
-                                                    {!isExpanded && (event.format || event.guests) && (
-                                                        <div className="text-[12px] text-white/80 font-medium mb-2 flex items-center">
-                                                            {formatAndGuests}
-                                                        </div>
-                                                    )}
-
                                                     {!isExpanded && (
-                                                        <div className="space-y-2 mt-1 flex flex-col items-start w-full">
-                                                            <div className="h-[1px] w-full bg-white/20 opacity-30"></div>
-                                                            <div className="flex gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#FFEED2]">
+                                                        <div className="space-y-2 mt-1 flex flex-col items-end">
+                                                            <div className="h-[1px] w-full bg-white/40 opacity-50"></div>
+                                                            <div className="flex gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] text-[#FFEED2] justify-end">
                                                                 {hasUrgentVacancies ? (
                                                                     <><span>ТРЕБУЕТСЯ</span><span>СОТРУДНИК</span></>
                                                                 ) : (
@@ -671,128 +504,116 @@
 
                                             <div className={`content-transition ${isExpanded ? 'expanded' : ''}`}>
                                                 <div className="px-5 pb-6">
-                                                    <div className="flex flex-col gap-3 mb-6">
-                                                        <button 
-                                                            onClick={(e) => openMap(e, event.location)}
-                                                            className="location-btn group flex items-center gap-2.5 text-white/90 text-[14px] bg-black/15 px-3.5 py-2 rounded-xl inline-flex w-fit max-w-full border border-white/5 active:bg-white/10 active:border-brand-accent transition-all cursor-pointer shadow-sm overflow-hidden"
-                                                        >
-                                                            <div className="w-5 h-5 shrink-0 transition-transform group-active:scale-110">
-                                                                <img src="location.png" alt="Loc" className="w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📍'; }} />
-                                                            </div>
-                                                            <span className="truncate font-medium border-b border-white/20 group-active:text-brand-accent group-active:border-brand-accent">{event.location || 'Уточняется'}</span>
-                                                        </button>
-                                                        {event.admin && (
-                                                            <button 
-                                                                onClick={(e) => handleAdminCall(e, event.admin)}
-                                                                className="admin-call-btn flex items-center gap-2 text-white text-lg font-bold bg-white/5 px-3 py-1.5 rounded-xl w-fit border border-white/10 shadow-md active:bg-white/20 transition-all cursor-pointer"
-                                                            >
-                                                                <div className="w-5 h-5 shrink-0 flex items-center justify-center">
-                                                                    <img src="phone.png" alt="Admin" className="w-full h-full object-contain phone-icon-transparent" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📞'; }} />
-                                                                </div>
-                                                                <span className="tracking-tight">{event.admin}</span>
-                                                            </button>
-                                                        )}
+                                                    <div className="flex items-center gap-2 text-white/90 text-[14px] mb-5 bg-black/20 px-3 py-2 rounded-xl inline-flex max-w-full">
+                                                        <div className="w-6 h-6 rounded-md bg-transparent flex items-center justify-center shrink-0">
+                                                            <img src="location.png" alt="Loc" className="w-6 h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '📍'; }} />
+                                                        </div>
+                                                        <span className="truncate font-medium">{event.location}</span>
                                                     </div>
-                                                    <div className="space-y-3 border-t border-white/10 pt-5">
-                                                        <div className="text-[10px] uppercase font-black text-white/60 tracking-[0.25em] mb-2 px-1">Команда</div>
+
+                                                    <div className="space-y-2.5 border-t border-white/10 pt-5">
+                                                        <div className="text-[10px] uppercase font-black text-white tracking-[0.2em] mb-1">Состав команды</div>
                                                         {allStaff.map((person, pIdx) => {
                                                             const currentRole = person.isPlaceholder ? person.roleKey : (person.rolesDisplay || person.roles?.[0] || '');
                                                             const isSearchedStaff = staffSearch && !person.isPlaceholder && person.name && person.name.toLowerCase().includes(staffSearch.toLowerCase().trim());
+
                                                             return (
-                                                                <div key={person.id || pIdx} className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${isSearchedStaff ? 'bg-brand-accent/25 border-brand-accent shadow-[0_0_15px_rgba(255,238,210,0.15)] scale-[1.02] z-10' : person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
-                                                                    <div className="flex items-center gap-3.5 overflow-hidden">
-                                                                        <div className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-md overflow-hidden">{getRoleIcon(currentRole, person.isPlaceholder)}</div>
+                                                                <div key={person.id || pIdx} className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${isSearchedStaff ? 'bg-brand-accent/20 border-brand-accent shadow-[inset_0_0_10px_rgba(255,238,210,0.1)]' : person.isPlaceholder ? 'bg-white/5 border-dashed border-white/20' : 'bg-black/20 border-white/5'}`}>
+                                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                                        <div className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-brand-accent shadow-inner overflow-hidden">{getRoleIcon(currentRole, person.isPlaceholder)}</div>
                                                                         <div className="overflow-hidden">
-                                                                            <div className={`text-[15px] font-bold truncate ${person.isPlaceholder ? 'text-white/30 italic font-medium' : isSearchedStaff ? 'text-brand-accent underline underline-offset-4' : 'text-white'}`}>{person.isPlaceholder ? 'Свободная вакансия' : person.name}</div>
-                                                                            <div className="text-[10px] text-white/40 uppercase font-black mt-0.5 tracking-wider">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
+                                                                            <div className={`text-[14px] font-semibold truncate ${person.isPlaceholder ? 'text-white/40 italic' : isSearchedStaff ? 'text-brand-accent font-bold' : 'text-white'}`}>{person.isPlaceholder ? 'Вакансия открыта' : person.name}</div>
+                                                                            <div className="text-[11px] text-white/50 uppercase font-bold mt-0.5 tracking-tight">{person.isPlaceholder ? person.roleLabel : (person.rolesDisplay || person.roles?.[0])}</div>
                                                                         </div>
                                                                     </div>
-                                                                    {!person.isPlaceholder && (
-                                                                        <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/40 border-white/10'}`}>
-                                                                            <span className={`text-[13px] font-mono font-black ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
+                                                                    {!person.isPlaceholder ? (
+                                                                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shrink-0 ${isSearchedStaff ? 'bg-brand-accent text-brand-dark border-brand-accent' : 'bg-black/30 border-white/5'}`}>
+                                                                            <span className={`text-[13px] font-mono font-bold ${isSearchedStaff ? 'text-brand-dark' : 'text-white'}`}>{person.time || '--:--'}</span>
                                                                         </div>
-                                                                    )}
+                                                                    ) : <div className="p-1.5 text-white/20 animate-pulse">{renderIcon('UserPlus', 18, "text-white/40")}</div>}
                                                                 </div>
                                                             );
                                                         })}
+
                                                         {missing.length > 0 && (
-                                                            <div className="mt-8 pt-4 border-t border-white/10 apply-form-container">
+                                                            <div className="mt-6 pt-4 border-t border-white/5 apply-form-container">
                                                                 {!applyingFor ? (
                                                                     <button 
-                                                                        onClick={(e) => { 
-                                                                            if (isOfflineData) return;
-                                                                            e.stopPropagation(); 
-                                                                            setApplyingFor(eventId); 
-                                                                        }}
-                                                                        disabled={isOfflineData}
-                                                                        className={`w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-xl flex items-center justify-center gap-3 transition-all border-[2px] ${
-                                                                            isOfflineData 
-                                                                            ? 'bg-red-950/20 text-red-400/60 border-red-900/40 cursor-not-allowed opacity-75' 
-                                                                            : 'bg-[#FFEED2] hover:bg-white text-black border-[#FFEED2] active:scale-[0.97]'
-                                                                        }`}
+                                                                        onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
+                                                                        className="w-full py-4 bg-[#FFEED2] hover:bg-[#F5E2C2] text-black rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                                                                     >
-                                                                        {isOfflineData ? (
-                                                                            <>
-                                                                                {renderIcon('WifiOff', 18, "text-red-400")} Н Е Т   С В Я З И
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                {renderIcon('CheckCircle2', 18, "text-black")} М О Г У
-                                                                            </>
-                                                                        )}
+                                                                        {renderIcon('CheckCircle2', 20, "text-black")} М О Г У
                                                                     </button>
                                                                 ) : applyingFor === eventId && (
-                                                                    <div className="bg-black/40 p-5 rounded-[24px] border border-brand-accent/30 space-y-4 fade-in shadow-2xl">
-                                                                        <div className="text-center mb-1">
-                                                                            <span className="text-[11px] font-black text-brand-accent uppercase tracking-[0.3em]">Регистрация на смену</span>
+                                                                    <div className="bg-black/30 p-5 rounded-[20px] border border-red-500/30 space-y-4 fade-in">
+                                                                        <div className="text-center mb-2">
+                                                                            <span className="text-[11px] font-bold text-[#FFEED2] uppercase tracking-widest">Подать заявку</span>
                                                                         </div>
+                                                                        
                                                                         {submitStatus === 'success' ? (
-                                                                            <div className="py-6 text-center text-green-400 font-bold flex flex-col items-center gap-3">
-                                                                                <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
-                                                                                    {renderIcon('Check', 24, "text-green-400")}
-                                                                                </div>
-                                                                                Готово! Заявка отправлена.
-                                                                            </div>
-                                                                        ) : submitStatus === 'duplicate' ? (
-                                                                            <div className="py-4 px-4 bg-red-500/20 rounded-xl border border-red-500/50 text-center space-y-3">
-                                                                                <div className="text-red-400 font-bold text-sm">ВНИМАНИЕ!</div>
-                                                                                <div className="text-white text-[12px] leading-relaxed">Вы уже записаны на мероприятие в этот день. Две смены в одну дату взять нельзя.</div>
-                                                                                <button onClick={() => setSubmitStatus(null)} className="text-[10px] uppercase font-black tracking-widest text-brand-accent border-b border-brand-accent pb-0.5">Исправить данные</button>
+                                                                            <div className="py-4 text-center text-green-400 font-bold flex flex-col items-center gap-2">
+                                                                                {renderIcon('PartyPopper', 24)}
+                                                                                Заявка успешно отправлена!
                                                                             </div>
                                                                         ) : (
                                                                             <>
                                                                                 <div className="space-y-3">
                                                                                     <div className="relative">
-                                                                                        <input type="text" placeholder="ФАМИЛИЯ" value={applyName} onChange={e => handleNameInput(e.target.value)} onFocus={() => setShowApplyAutocomplete(true)} className="w-full bg-white/5 border border-white/15 rounded-xl px-5 py-4 text-sm font-bold placeholder:text-white/20 focus:border-brand-accent focus:bg-white/10 outline-none transition-all uppercase tracking-wider" />
+                                                                                        <input 
+                                                                                            type="text" 
+                                                                                            placeholder="фамилия" 
+                                                                                            value={applyName}
+                                                                                            onChange={e => handleNameInput(e.target.value)}
+                                                                                            onFocus={() => setShowApplyAutocomplete(true)}
+                                                                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-brand-accent outline-none"
+                                                                                        />
                                                                                         {showApplyAutocomplete && applyAutocompleteOptions.length > 0 && (
-                                                                                            <div className="apply-autocomplete shadow-2xl">
+                                                                                            <div className="apply-autocomplete">
                                                                                                 {applyAutocompleteOptions.map((staff, i) => (
-                                                                                                    <div key={i} onClick={() => handleSelectStaff(staff)} className="px-5 py-3.5 text-xs font-bold border-b border-white/5 last:border-0 hover:bg-brand-accent hover:text-brand-dark cursor-pointer transition-colors">{staff.name}</div>
+                                                                                                    <div 
+                                                                                                        key={i} 
+                                                                                                        onClick={() => handleSelectStaff(staff)}
+                                                                                                        className="px-4 py-2 text-xs border-b border-white/5 last:border-0 hover:bg-brand-accent hover:text-brand-dark cursor-pointer transition-colors"
+                                                                                                    >
+                                                                                                        {staff.name}
+                                                                                                    </div>
                                                                                                 ))}
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <input type="tel" placeholder="ТЕЛЕФОН (8...)" value={applyPhone} onChange={e => handlePhoneInput(e.target.value)} className={`w-full bg-white/5 border rounded-xl px-5 py-4 text-sm font-bold outline-none transition-all ${isPhoneAutoFilled ? 'border-brand-accent text-brand-accent' : 'border-white/15 focus:border-brand-accent focus:bg-white/10'}`} />
+                                                                                    <div className="relative">
+                                                                                        <input 
+                                                                                            type="tel" 
+                                                                                            placeholder="номер телефона (8... или 9...)" 
+                                                                                            value={applyPhone}
+                                                                                            onChange={e => handlePhoneInput(e.target.value)}
+                                                                                            className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm outline-none transition-colors ${isPhoneAutoFilled ? 'border-brand-accent text-brand-accent' : 'border-white/10 focus:border-brand-accent'}`}
+                                                                                        />
+                                                                                        {isPhoneValid && (
+                                                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                                                                {renderIcon('Check', 14, "text-brand-accent")}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 </div>
-
-                                                                                {/* Показываем инфо-плашку, если имя совпало с кем-то в эту дату */}
-                                                                                {isBooked && (
-                                                                                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-[11px] text-red-300 font-bold flex items-center gap-2">
-                                                                                        {renderIcon('AlertCircle', 14, "text-red-400")}
-                                                                                        Вы уже записаны на {formatDate(event.date)}
-                                                                                    </div>
-                                                                                )}
-
-                                                                                <div className="flex gap-3 pt-2">
-                                                                                    <button onClick={() => { setApplyingFor(null); setShowApplyAutocomplete(false); setSubmitStatus(null); }} className="px-5 py-4 bg-white/5 text-white/40 rounded-xl font-black text-[10px] uppercase tracking-widest border border-white/10 active:bg-white/10">Отмена</button>
+                                                                                
+                                                                                <div className="flex gap-2">
                                                                                     <button 
-                                                                                        onClick={() => handleSendApplication(event)} 
-                                                                                        disabled={isSubmitting || !isFormValid || isBooked} 
-                                                                                        className="flex-1 py-4 bg-brand-accent text-brand-dark rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 disabled:opacity-20 active:scale-95 transition-all shadow-lg"
+                                                                                        onClick={() => {
+                                                                                            setApplyingFor(null);
+                                                                                            setShowApplyAutocomplete(false);
+                                                                                        }}
+                                                                                        className="px-4 py-3 bg-white/5 text-white/50 rounded-xl font-bold text-xs uppercase"
                                                                                     >
-                                                                                        {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon('Send', 16, "text-brand-dark")} Отправить
+                                                                                        Отмена
+                                                                                    </button>
+                                                                                    <button 
+                                                                                        onClick={() => handleSendApplication(event)}
+                                                                                        disabled={isSubmitting || !isFormValid}
+                                                                                        className="flex-1 py-3 bg-brand-accent text-brand-dark rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-30"
+                                                                                    >
+                                                                                        {isSubmitting ? <div className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></div> : renderIcon('Send', 14, "text-brand-dark")}
+                                                                                        Отправить
                                                                                     </button>
                                                                                 </div>
                                                                             </>
@@ -809,7 +630,6 @@
                                 })}
                             </div>
                         )}
-                        <footer className="mt-12 mb-8 text-center opacity-30 text-[10px] font-black uppercase tracking-[0.4em]">На этом пока все :)</footer>
                     </div>
                 </div>
             );
