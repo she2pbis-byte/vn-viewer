@@ -160,6 +160,7 @@
             const [filter, setFilter] = useState('ALL');
             const [staffSearch, setStaffSearch] = useState('');
             const [showAutocomplete, setShowAutocomplete] = useState(false);
+            const [isOfflineData, setIsOfflineData] = useState(false); // Флаг работы с офлайн-кэшем
             const autocompleteRef = useRef(null);
 
             const [applyingFor, setApplyingFor] = useState(null);
@@ -275,13 +276,13 @@
                 return missing;
             };
 
-            const processAndSetEvents = useCallback((data) => {
-                if (!data) return;
-                const rawEvents = Array.isArray(data) ? data : [data];
+            const processRawEvents = useCallback((rawEventsData) => {
+                if (!rawEventsData) return [];
+                const rawEvents = Array.isArray(rawEventsData) ? rawEventsData : [rawEventsData];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                const processedEvents = rawEvents
+                return rawEvents
                     .filter(event => {
                         if (!event || !event.date) return false;
                         const eventDate = new Date(event.date);
@@ -295,44 +296,113 @@
                         _hasUrgent: getMissingStaff(event).some(m => m.roleKey === 'оф' || m.roleKey === 'бар')
                     }))
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
+            }, []);
 
+            const processAndSetEvents = useCallback((data) => {
+                if (!data) return;
+                const processedEvents = processRawEvents(data);
                 setEvents(processedEvents);
-                setLastUpdated(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                
+                const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                setLastUpdated(timeStr);
+                localStorage.setItem('vn_last_updated', timeStr);
+
                 if (processedEvents.length === 0) setError("Актуальных вакансий не найдено.");
                 else setError(null);
-            }, []);
+            }, [processRawEvents]);
 
             const fetchInitialData = async () => {
                 setLoading(true);
+                let eventsSuccess = false;
+                let staffSuccess = false;
+                let freshEvents = null;
+                let freshStaff = null;
+
                 try {
-                    const [eventsRes, staffRes] = await Promise.all([
-                        fetch(`${EVENTS_URL}?t=${Date.now()}`),
-                        fetch(`${STAFF_DB_URL}?t=${Date.now()}`)
-                    ]);
+                    const eventsRes = await fetch(`${EVENTS_URL}?t=${Date.now()}`);
                     if (eventsRes.ok) {
-                        const eventsData = await eventsRes.json();
-                        processAndSetEvents(eventsData);
-                    }
-                    if (staffRes.ok) {
-                        const staffData = await staffRes.json();
-                        setStaffDatabase(Array.isArray(staffData) ? staffData : []);
+                        freshEvents = await eventsRes.json();
+                        eventsSuccess = true;
                     }
                 } catch (err) {
-                    setError("Не удалось загрузить данные.");
-                } finally {
-                    setLoading(false);
-                    setIsInitialLoad(false);
+                    console.warn("Сетевой запрос событий завершился с ошибкой, используем кэш.");
                 }
+
+                try {
+                    const staffRes = await fetch(`${STAFF_DB_URL}?t=${Date.now()}`);
+                    if (staffRes.ok) {
+                        freshStaff = await staffRes.json();
+                        staffSuccess = true;
+                    }
+                } catch (err) {
+                    console.warn("Сетевой запрос базы данных сотрудников завершился с ошибкой, используем кэш.");
+                }
+
+                if (eventsSuccess && freshEvents) {
+                    processAndSetEvents(freshEvents);
+                    localStorage.setItem('vn_events_cache', JSON.stringify(freshEvents));
+                    setIsOfflineData(false);
+                }
+                
+                if (staffSuccess && freshStaff) {
+                    const formattedStaff = Array.isArray(freshStaff) ? freshStaff : [];
+                    setStaffDatabase(formattedStaff);
+                    localStorage.setItem('vn_staff_cache', JSON.stringify(formattedStaff));
+                }
+
+                // Корректировка отображения ошибок и статуса сети
+                if (!eventsSuccess) {
+                    const cachedEvents = localStorage.getItem('vn_events_cache');
+                    if (cachedEvents) {
+                        setIsOfflineData(true);
+                        setError("Нет подключения к интернету. Отображаются сохраненные данные.");
+                    } else {
+                        setError("Не удалось загрузить данные и нет сохранённой копии.");
+                    }
+                } else {
+                    setError(null);
+                }
+
+                setLoading(false);
+                setIsInitialLoad(false);
             };
 
             useEffect(() => {
+                // Моментальная инициализация данных из localStorage до выполнения сетевого запроса
+                const cachedEvents = localStorage.getItem('vn_events_cache');
+                const cachedStaff = localStorage.getItem('vn_staff_cache');
+                const cachedTime = localStorage.getItem('vn_last_updated');
+
+                if (cachedEvents) {
+                    try {
+                        const parsedEvents = JSON.parse(cachedEvents);
+                        setEvents(processRawEvents(parsedEvents));
+                        setIsOfflineData(true); // Временно считаем офлайновыми, пока не пройдет успешный fetch
+                    } catch (e) {
+                        console.error("Ошибка парсинга кэша событий", e);
+                    }
+                }
+                if (cachedStaff) {
+                    try {
+                        setStaffDatabase(JSON.parse(cachedStaff));
+                    } catch (e) {
+                        console.error("Ошибка парсинга кэша сотрудников", e);
+                    }
+                }
+                if (cachedTime) {
+                    setLastUpdated(cachedTime);
+                }
+
                 fetchInitialData();
+
                 const intervalId = setInterval(() => fetchInitialData(), REFRESH_INTERVAL);
+                
                 const handleClickOutside = (event) => {
                     if (autocompleteRef.current && !autocompleteRef.current.contains(event.target)) {
                         setShowAutocomplete(false);
                     }
                 };
+                
                 document.addEventListener('mousedown', handleClickOutside);
                 return () => {
                     clearInterval(intervalId);
@@ -403,7 +473,6 @@
                 return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
             }, [applyPhone]);
 
-            // ПРОВЕРКА: забит ли человек уже в этот день
             const isAlreadyBookedForDate = (date, name) => {
                 if (!name || name.length < 2) return false;
                 const searchName = name.toLowerCase().trim();
@@ -436,7 +505,6 @@
             const handleSendApplication = async (event) => {
                 if (!isFormValid) return;
                 
-                // Финальная проверка перед отправкой
                 if (isAlreadyBookedForDate(event.date, applyName)) {
                     setSubmitStatus('duplicate');
                     return;
@@ -482,7 +550,12 @@
                             <div>
                                 <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Кейтеринг ВН</h1>
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[12px] text-white/70 uppercase tracking-widest font-bold">Актуальные вакансии</span>
+                                        {isOfflineData && (
+                                            <span className="bg-red-600/20 text-red-400 text-[9px] px-1.5 py-0.5 rounded border border-red-500/30 uppercase font-black tracking-wider">офлайн</span>
+                                        )}
+                                    </div>
                                     {lastUpdated && <span className="text-[12px] text-white/50 uppercase tracking-widest font-bold">Обновлено: {lastUpdated}</span>}
                                 </div>
                             </div>
@@ -518,9 +591,9 @@
                             )}
                         </div>
 
-                        {error && !loading && <div className="mb-4 p-4 bg-white/5 border border-white/10 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('Info', 14, "text-brand-accent")} {error}</div>}
+                        {error && <div className="mb-4 p-4 bg-red-950/20 border border-red-500/20 text-white rounded-xl text-[13px] flex items-center gap-2.5 fade-in">{renderIcon('WifiOff', 14, "text-red-400")} {error}</div>}
 
-                        {isInitialLoad && loading ? (
+                        {isInitialLoad && loading && events.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 opacity-40">
                                 <div className="w-10 h-10 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mb-4"></div>
                                 <p className="text-sm font-bold uppercase tracking-widest">Загрузка данных...</p>
@@ -646,10 +719,27 @@
                                                             <div className="mt-8 pt-4 border-t border-white/10 apply-form-container">
                                                                 {!applyingFor ? (
                                                                     <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setApplyingFor(eventId); }}
-                                                                        className="w-full py-3 bg-[#FFEED2] hover:bg-white text-black rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-xl flex items-center justify-center gap-3 active:scale-[0.97] transition-all border-[2px] border-[#FFEED2]"
+                                                                        onClick={(e) => { 
+                                                                            if (isOfflineData) return;
+                                                                            e.stopPropagation(); 
+                                                                            setApplyingFor(eventId); 
+                                                                        }}
+                                                                        disabled={isOfflineData}
+                                                                        className={`w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] shadow-xl flex items-center justify-center gap-3 transition-all border-[2px] ${
+                                                                            isOfflineData 
+                                                                            ? 'bg-red-950/20 text-red-400/60 border-red-900/40 cursor-not-allowed opacity-75' 
+                                                                            : 'bg-[#FFEED2] hover:bg-white text-black border-[#FFEED2] active:scale-[0.97]'
+                                                                        }`}
                                                                     >
-                                                                        {renderIcon('CheckCircle2', 18, "text-black")} М О Г У
+                                                                        {isOfflineData ? (
+                                                                            <>
+                                                                                {renderIcon('WifiOff', 18, "text-red-400")} Н Е Т   С В Я З И
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                {renderIcon('CheckCircle2', 18, "text-black")} М О Г У
+                                                                            </>
+                                                                        )}
                                                                     </button>
                                                                 ) : applyingFor === eventId && (
                                                                     <div className="bg-black/40 p-5 rounded-[24px] border border-brand-accent/30 space-y-4 fade-in shadow-2xl">
